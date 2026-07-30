@@ -1957,6 +1957,9 @@ ${textToUse.slice(0, 15000)}`;
   startCbtExam(extractedQuestionsList, extractedQuestionsList.length * 120);
 }
 
+// Bind immediately to window object for bulletproof inline HTML onclick handlers
+window.generateCbtFromExtractedText = generateCbtFromExtractedText;
+
 function parseMcqsLocally(fullText) {
   if (!fullText) return [];
   const questions = [];
@@ -3265,6 +3268,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const testOpenRouterBtn = document.getElementById("btn-test-openrouter-key");
   if (testOpenRouterBtn) testOpenRouterBtn.onclick = testOpenRouterApiConnection;
+
+  const convertCbtBtn = document.getElementById("btn-convert-cbt-text");
+  if (convertCbtBtn) {
+    convertCbtBtn.onclick = () => {
+      const inputVal = document.getElementById("manual-cbt-text-input")?.value;
+      generateCbtFromExtractedText(inputVal);
+    };
+  }
 
   const removeOpenRouterBtn = document.getElementById("btn-remove-openrouter-key");
   if (removeOpenRouterBtn) removeOpenRouterBtn.onclick = removeOpenRouterApiKey;
