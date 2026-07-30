@@ -15522,11 +15522,11 @@ function quickSaveApiKey(btn) {
    ========================================================================== */
 
 const OPENROUTER_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-r1:free",
-  "google/gemini-2.0-flash-001",
-  "qwen/qwen-2.5-72b-instruct:free",
-  "mistralai/mistral-7b-instruct:free"
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "openai/gpt-oss-20b:free",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "openrouter/free"
 ];
 
 function getOpenRouterApiKey() {
@@ -15645,18 +15645,19 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
   }
 
   const visionModels = [
-    "google/gemini-2.0-flash-001",
-    "qwen/qwen-2.5-vl-72b-instruct:free",
-    "meta-llama/llama-3.2-11b-vision-instruct:free",
-    "openai/gpt-4o-mini"
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "openrouter/free"
   ];
 
   const selectedModel = options.imageDataUrl
-    ? (options.model || "google/gemini-2.0-flash-001")
-    : (options.model || "meta-llama/llama-3.3-70b-instruct:free");
+    ? (options.model || "google/gemma-4-31b-it:free")
+    : (options.model || "google/gemma-4-31b-it:free");
 
   const fallbackList = options.imageDataUrl ? visionModels : OPENROUTER_MODELS;
   const modelsToTry = [selectedModel, ...fallbackList.filter(m => m !== selectedModel)];
+  const modelErrors = [];
 
   for (const m of modelsToTry) {
     try {
@@ -15690,6 +15691,7 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
         const errData = await res.json().catch(() => ({}));
         const msg = errData.error?.message || `HTTP ${res.status}`;
         console.warn(`OpenRouter model ${m} error:`, msg);
+        modelErrors.push(`[${m}]: ${msg}`);
         if (res.status === 401 || msg.includes("Invalid API key")) {
           throw new Error("INVALID_OPENROUTER_KEY");
         }
@@ -15698,7 +15700,10 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
 
       const data = await res.json();
       const answerText = data.choices?.[0]?.message?.content;
-      if (!answerText) throw new Error("Empty response from OpenRouter API.");
+      if (!answerText) {
+        modelErrors.push(`[${m}]: Empty choice response`);
+        throw new Error("Empty response from OpenRouter API.");
+      }
 
       const estTokens = Math.ceil((prompt.length + (systemInstruction ? systemInstruction.length : 0) + answerText.length) / 4);
       recordTokenUsage(estTokens, false);
@@ -15707,10 +15712,13 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
     } catch (err) {
       if (err.message === "INVALID_OPENROUTER_KEY") throw err;
       console.warn(`OpenRouter model ${m} failed:`, err);
+      if (!modelErrors.some(e => e.startsWith(`[${m}]`))) {
+        modelErrors.push(`[${m}]: ${err.message || String(err)}`);
+      }
     }
   }
 
-  throw new Error("All OpenRouter models failed or returned errors.");
+  throw new Error("All OpenRouter models failed:\n" + modelErrors.join("\n"));
 }
 
 /* ==========================================================================
@@ -17426,6 +17434,20 @@ async function fetchLiveNewsData(category = "all") {
   } catch (err) {
     console.warn("NewsData fetch failed:", err);
     return null;
+  }
+}
+
+async function summarizeNews(title, snippet) {
+  if (!title) return;
+  const prompt = `Provide a concise 3-bullet point AI summary and NTA action items for NEET aspirants based on this news update:
+Title: ${title}
+Details: ${snippet || title}`;
+
+  try {
+    const summary = await callAiWithFailover(prompt, "You are a NEET NTA counseling expert.", () => {}, { maxTokens: 800 });
+    alert(`📰 AI Summary for: ${title}\n\n${summary}`);
+  } catch (err) {
+    alert(`📰 Update Details:\n\n${title}\n${snippet || title}`);
   }
 }
 
