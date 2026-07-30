@@ -1295,9 +1295,14 @@
           </div>
 
           <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
-            <!-- CHEMISTRY & MATH FORMATTING QUICK TOOLBAR (SUBSCRIPT & SUPERSCRIPT) -->
+            <!-- CHEMISTRY & MATH FORMATTING QUICK TOOLBAR (SUBSCRIPT & SUPERSCRIPT + IMAGE UPLOAD) -->
+            <input type="file" id="tutor-image-upload" accept="image/*" style="display:none;" onchange="handleTutorImageUpload(event)">
+            
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:8px; border:1px solid var(--glass-border);">
-              <span style="font-size:11px; color:#aaa; font-weight:bold;">🧪 Chemistry & Math Controls:</span>
+              <span style="font-size:11px; color:#aaa; font-weight:bold;">📷 Attach & Format:</span>
+              <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px; background:rgba(0,212,170,0.15); color:#00d4aa; border:1px solid rgba(0,212,170,0.4);" onclick="document.getElementById('tutor-image-upload').click()" title="Upload Question or Diagram Image">📷 Upload Photo / Question</button>
+              <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px; background:rgba(147,51,234,0.15); color:#c084fc; border:1px solid rgba(147,51,234,0.4);" onclick="generateAiDiagramForTutor()" title="Generate AI Concept Diagram via OpenRouter">🎨 Generate AI Diagram</button>
+              <span style="font-size:11px; color:#aaa; font-weight:bold; margin-left:6px;">🧪 Symbols:</span>
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertSubscript('tutor-chat-input')" title="Subscript (e.g. H~2~O)">X<sub>2</sub> Sub</button>
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertSuperscript('tutor-chat-input')" title="Superscript (e.g. Fe^3+^)">X<sup>2</sup> Sup</button>
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('⇌ ', 'tutor-chat-input')" title="Reversible Equilibrium Arrow">⇌</button>
@@ -1305,12 +1310,22 @@
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('Δ', 'tutor-chat-input')" title="Delta (Heat/Change)">Δ</button>
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('H~2~O', 'tutor-chat-input')">H<sub>2</sub>O</button>
               <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('CO~2~', 'tutor-chat-input')">CO<sub>2</sub></button>
-              <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('Fe^3+^', 'tutor-chat-input')">Fe<sup>3+</sup></button>
-              <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 8px;" onclick="insertChemistrySymbol('SO~4~^2-^', 'tutor-chat-input')">SO<sub>4</sub><sup>2-</sup></button>
             </div>
 
-            <div style="display:flex; gap:8px;">
-              <textarea id="tutor-chat-input" class="form-control" rows="2" placeholder="Ask any NEET doubt... e.g. H2O, Fe3+, Ka value (Ctrl+Enter to send)" oninput="updateCharCount()" onkeydown="handleChatKeyPress(event)"></textarea>
+            <!-- UPLOADED IMAGE PREVIEW CONTAINER -->
+            <div id="tutor-image-preview-container" style="display:none; margin-top:6px; padding:8px 12px; background:rgba(0,212,170,0.08); border:1px dashed rgba(0,212,170,0.4); border-radius:8px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <img id="tutor-image-preview-img" src="" alt="Question Image Preview" style="max-height:50px; max-width:70px; border-radius:6px; border:1px solid var(--glass-border); object-fit:cover;">
+                <div style="flex:1;">
+                  <div style="font-size:12px; font-weight:bold; color:#00d4aa;">📷 Question Image Attached</div>
+                  <div id="tutor-image-filename" style="font-size:11px; color:#aaa;">Ready to analyze via OpenRouter AI</div>
+                </div>
+                <button type="button" class="btn btn-secondary" style="font-size:11px; padding:3px 8px; color:#ef4444;" onclick="removeAttachedTutorImage()">❌ Remove</button>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:4px;">
+              <textarea id="tutor-chat-input" class="form-control" rows="2" placeholder="Ask any NEET doubt or upload a question photo... (Ctrl+Enter to send)" oninput="updateCharCount()" onkeydown="handleChatKeyPress(event)"></textarea>
               <button class="btn btn-primary" onclick="sendTutorMessage()" style="align-self:flex-end; padding:12px 20px;">Send 🚀</button>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:11px; color:#aaa;">
@@ -1322,6 +1337,7 @@
               <button class="btn btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="quickAsk('Explain the concept of Circular Motion with key formulas')">⚡ Circular Motion</button>
               <button class="btn btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="quickAsk('Give me a trick to remember Plant Kingdom classification')">🧬 Plant Kingdom Mnemonic</button>
               <button class="btn btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="quickAsk('Explain SN1 vs SN2 reaction mechanism')">🧪 SN1 vs SN2 Mechanism</button>
+              <button class="btn btn-secondary" style="font-size:11px; padding:4px 8px; background:rgba(147,51,234,0.15); color:#c084fc; border:1px solid rgba(147,51,234,0.4);" onclick="generateAiDiagramForTutor()">🎨 Generate AI Diagram</button>
             </div>
           </div>
         </div>
@@ -1356,6 +1372,7 @@
             <button class="btn btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="quickResearch('NEET 2027 revised biology syllabus changes')">🔵 Syllabus Updates</button>
             <button class="btn btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="quickResearch('NCERT Biology Biotechnology DNA Recombinant technology deep concept')">🧬 NCERT Biotech Deep-Dive</button>
             <button class="btn btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="quickResearch('Latest medical research on Human Heart cardiac cycle mechanisms')">🧪 Medical Research Papers</button>
+            <button class="btn btn-secondary" style="font-size:11px; padding:4px 10px; background:rgba(147,51,234,0.15); color:#c084fc; border:1px solid rgba(147,51,234,0.4);" onclick="generateResearchInfographic()">🎨 Generate Research Infographic</button>
           </div>
         </div>
 

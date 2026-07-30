@@ -504,16 +504,38 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
     throw new Error("NO_OPENROUTER_KEY");
   }
 
-  if (onStatus) onStatus("⚡ Processing with OpenRouter AI...");
+  if (onStatus) onStatus(options.imageDataUrl ? "👁️ Analyzing uploaded question image via OpenRouter Vision AI..." : "⚡ Processing with OpenRouter AI...");
 
   const messages = [];
   if (systemInstruction) {
     messages.push({ role: "system", content: systemInstruction });
   }
-  messages.push({ role: "user", content: prompt });
 
-  const selectedModel = options.model || "meta-llama/llama-3.3-70b-instruct:free";
-  const modelsToTry = [selectedModel, ...OPENROUTER_MODELS.filter(m => m !== selectedModel)];
+  if (options.imageDataUrl) {
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: prompt || "Analyze this question/diagram image step-by-step with clear formulas and explanations." },
+        { type: "image_url", image_url: { url: options.imageDataUrl } }
+      ]
+    });
+  } else {
+    messages.push({ role: "user", content: prompt });
+  }
+
+  const visionModels = [
+    "google/gemini-2.0-flash-001",
+    "qwen/qwen-2.5-vl-72b-instruct:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "openai/gpt-4o-mini"
+  ];
+
+  const selectedModel = options.imageDataUrl
+    ? (options.model || "google/gemini-2.0-flash-001")
+    : (options.model || "meta-llama/llama-3.3-70b-instruct:free");
+
+  const fallbackList = options.imageDataUrl ? visionModels : OPENROUTER_MODELS;
+  const modelsToTry = [selectedModel, ...fallbackList.filter(m => m !== selectedModel)];
 
   for (const m of modelsToTry) {
     try {
@@ -845,7 +867,51 @@ async function callAiWithGroqFirst(prompt, systemInstruction = "", onStatus = nu
   throw new Error("All AI engines (Groq & Gemini) failed or rate limited.");
 }
 
-const callAiTutorWithGroqFirst = callAiWithGroqFirst;
+/* ==========================================================================
+   FEATURE 1: AI TUTOR (DOUBT SOLVER & IMAGE UPLOAD VIA OPENROUTER)
+   ========================================================================== */
+
+let attachedTutorImageDataUrl = null;
+let attachedTutorImageFileName = "";
+
+function handleTutorImageUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    alert("Please select a valid image file (PNG, JPG, WEBP)!");
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Image size should be less than 10MB!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    attachedTutorImageDataUrl = e.target.result;
+    attachedTutorImageFileName = file.name;
+
+    const container = document.getElementById("tutor-image-preview-container");
+    const img = document.getElementById("tutor-image-preview-img");
+    const fileNameEl = document.getElementById("tutor-image-filename");
+
+    if (img) img.src = attachedTutorImageDataUrl;
+    if (fileNameEl) fileNameEl.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+    if (container) container.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeAttachedTutorImage() {
+  attachedTutorImageDataUrl = null;
+  attachedTutorImageFileName = "";
+  const container = document.getElementById("tutor-image-preview-container");
+  const input = document.getElementById("tutor-image-upload");
+  if (container) container.style.display = "none";
+  if (input) input.value = "";
+}
 
 function quickAsk(promptText) {
   const input = document.getElementById("tutor-chat-input");
@@ -867,18 +933,28 @@ async function sendTutorMessage() {
   const input = document.getElementById("tutor-chat-input");
   if (!input) return;
   const userText = input.value.trim();
-  if (!userText) return;
+  const imageDataUrl = attachedTutorImageDataUrl;
 
-  if (!getGroqApiKey() && !getApiKey()) {
-    alert("Please set your free Groq or Gemini API Key in the Settings tab first!");
+  if (!userText && !imageDataUrl) return;
+
+  if (!getOpenRouterApiKey() && !getGroqApiKey() && !getApiKey()) {
+    alert("Please set your OpenRouter, Groq, or Gemini API Key in Settings first!");
     showTab("settings");
     return;
   }
 
   input.value = "";
   updateCharCount();
+  removeAttachedTutorImage();
 
-  appendChatMessage("user", userText);
+  let userDisplayContent = "";
+  if (imageDataUrl) {
+    userDisplayContent = `<div style="margin-bottom:6px;"><img src="${imageDataUrl}" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--glass-border); object-fit:contain; display:block;"></div>${escapeHTML(userText || "Analyze this question/diagram photo step-by-step.")}`;
+  } else {
+    userDisplayContent = escapeHTML(userText);
+  }
+
+  appendChatMessage("user", userDisplayContent, true);
   const typingId = appendTypingIndicator();
 
   try {
@@ -892,9 +968,14 @@ async function sendTutorMessage() {
       }
     }
 
-    const aiResponse = await callAiTutorWithGroqFirst(userText, sysPrompt, (statusMsg) => {
+    const options = {};
+    if (imageDataUrl) {
+      options.imageDataUrl = imageDataUrl;
+    }
+
+    const aiResponse = await callAiWithFailover(userText, sysPrompt, (statusMsg) => {
       updateTypingText(typingId, statusMsg);
-    });
+    }, options);
 
     removeChatMessage(typingId);
     appendChatMessage("ai", aiResponse);
@@ -902,16 +983,16 @@ async function sendTutorMessage() {
   } catch (err) {
     removeChatMessage(typingId);
     if (err.message === "NO_API_KEY") {
-      appendChatMessage("ai", "⚠️ **Setup Required**: Please configure your Groq API Key or Gemini API Key in the Settings tab.");
+      appendChatMessage("ai", "⚠️ **Setup Required**: Please configure your OpenRouter API Key, Groq API Key, or Gemini API Key in Settings.");
     } else if (err.message === "HTTP_429_EXCEEDED") {
-      appendChatMessage("ai", "⚠️ **Rate Limit Exceeded**: All AI engines (Groq & Gemini) are cooling down. Please wait 30 seconds.");
+      appendChatMessage("ai", "⚠️ **Rate Limit Exceeded**: All AI engines are cooling down. Please wait 30 seconds.");
     } else {
       appendChatMessage("ai", `❌ **Error**: ${err.message}`);
     }
   }
 }
 
-function appendChatMessage(sender, text) {
+function appendChatMessage(sender, text, isRawHtml = false) {
   const chatBody = document.getElementById("tutor-chat-body");
   if (!chatBody) return;
 
@@ -919,13 +1000,16 @@ function appendChatMessage(sender, text) {
   msgDiv.className = `chat-bubble chat-bubble-${sender}`;
   
   if (sender === "user") {
-    msgDiv.innerHTML = `<div class="bubble-content">${escapeHTML(text)}</div>`;
+    msgDiv.innerHTML = `<div class="bubble-content">${isRawHtml ? text : escapeHTML(text)}</div>`;
   } else {
     const parsedText = parseMarkdownAndKaTeX(text);
     msgDiv.innerHTML = `
-      <div class="bubble-header">
+      <div class="bubble-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="ai-badge">🧠 NEET AI Tutor</span>
-        <button class="copy-btn" onclick="copyText(this)">📋 Copy</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary" style="font-size:10px; padding:2px 6px;" onclick="generateAiImageWithOpenRouter('${escapeHTML(text.slice(0, 100))}', this.closest('.chat-bubble'))">🎨 Generate Diagram</button>
+          <button class="copy-btn" onclick="copyText(this)">📋 Copy</button>
+        </div>
       </div>
       <div class="bubble-content">${parsedText}</div>
     `;
@@ -943,6 +1027,96 @@ function appendChatMessage(sender, text) {
         ]
       });
     } catch(e) {}
+  }
+}
+
+/* ==========================================================================
+   OPENROUTER AI IMAGE & SCIENTIFIC DIAGRAM GENERATOR
+   ========================================================================== */
+
+async function generateAiImageWithOpenRouter(prompt, containerOrEl, options = {}) {
+  const openrouterKey = getOpenRouterApiKey();
+  const geminiKey = getApiKey();
+  const groqKey = getGroqApiKey();
+
+  if (!openrouterKey && !geminiKey && !groqKey) {
+    alert("Please configure your OpenRouter API Key in Settings first!");
+    showTab("settings");
+    return;
+  }
+
+  const sysPrompt = "You are an expert scientific illustrator and vector graphics designer for NTA NEET Physics, Chemistry, and Biology. Your job is to output a clean, modern, color-coded SVG vector diagram or schematic for the requested topic. OUTPUT ONLY clean SVG code starting with <svg> and ending with </svg>. Do NOT include markdown fences, HTML tags outside svg, or extra conversational text.";
+
+  const statusEl = document.createElement("div");
+  statusEl.className = "glass-card";
+  statusEl.style.cssText = "padding:12px; margin-top:10px; border:1px solid rgba(147,51,234,0.4); background:rgba(147,51,234,0.06); text-align:center; font-size:12px;";
+  statusEl.innerHTML = `🎨 <strong>Generating AI Scientific Diagram via OpenRouter API...</strong>`;
+
+  if (typeof containerOrEl === "string") {
+    const parent = document.getElementById(containerOrEl);
+    if (parent) parent.appendChild(statusEl);
+  } else if (containerOrEl && containerOrEl.appendChild) {
+    containerOrEl.appendChild(statusEl);
+  }
+
+  try {
+    const optionsObj = { temperature: 0.2 };
+    if (openrouterKey) {
+      optionsObj.model = "google/gemini-2.0-flash-001";
+    }
+
+    const rawSvgResult = await callAiWithFailover(`Create a clean vector SVG diagram for: ${prompt}. Ensure proper viewBox, labels, text elements, and crisp colors suitable for a study guide.`, sysPrompt, (msg) => {
+      statusEl.innerHTML = `🎨 ${msg}`;
+    }, optionsObj);
+
+    let cleanSvg = rawSvgResult.trim();
+    if (cleanSvg.includes("<svg")) {
+      const startIdx = cleanSvg.indexOf("<svg");
+      const endIdx = cleanSvg.lastIndexOf("</svg>");
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanSvg = cleanSvg.substring(startIdx, endIdx + 6);
+      }
+    } else {
+      cleanSvg = `<div style="padding:15px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px solid var(--glass-border); text-align:left;">🖼️ <strong>Visual Diagram Summary:</strong><br>${parseMarkdownAndKaTeX(rawSvgResult)}</div>`;
+    }
+
+    statusEl.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(147,51,234,0.3); padding-bottom:4px;">
+        <span style="font-size:11px; font-weight:bold; color:#c084fc;">🎨 OpenRouter AI Scientific Diagram</span>
+        <button class="btn btn-secondary" style="font-size:10px; padding:2px 6px;" onclick="this.closest('.glass-card').remove()">✕ Close</button>
+      </div>
+      <div style="max-width:100%; overflow-x:auto; margin:0 auto;">${cleanSvg}</div>
+    `;
+
+  } catch (err) {
+    statusEl.innerHTML = `❌ <span style="color:#ef4444;">Diagram Generation Failed: ${err.message}</span>`;
+  }
+}
+
+function generateAiDiagramForTutor() {
+  const input = document.getElementById("tutor-chat-input");
+  const topic = input && input.value.trim() ? input.value.trim() : "Neuron structure and synaptic transmission";
+  
+  const chatBody = document.getElementById("tutor-chat-body");
+  if (chatBody) {
+    generateAiImageWithOpenRouter(topic, chatBody);
+  }
+}
+
+function generateResearchInfographic() {
+  const queryInput = document.getElementById("research-query-input");
+  const topic = queryInput && queryInput.value.trim() ? queryInput.value.trim() : "Cardiac cycle and ECG waveforms";
+
+  const container = document.getElementById("research-results-container");
+  if (container) {
+    generateAiImageWithOpenRouter(topic, container);
+  }
+}
+
+function generateCbtQuestionDiagram(qIdx) {
+  const qContainer = document.getElementById(`cbt-question-card-${qIdx}`) || document.getElementById("cbt-exam-panel");
+  if (qContainer) {
+    generateAiImageWithOpenRouter(`Physics/Chemistry/Biology NEET question diagram for question #${qIdx + 1}`, qContainer);
   }
 }
 
@@ -2835,6 +3009,12 @@ window.quickAsk = quickAsk;
 window.clearChat = clearChat;
 window.handleChatKeyPress = handleChatKeyPress;
 window.updateCharCount = updateCharCount;
+window.handleTutorImageUpload = handleTutorImageUpload;
+window.removeAttachedTutorImage = removeAttachedTutorImage;
+window.generateAiImageWithOpenRouter = generateAiImageWithOpenRouter;
+window.generateAiDiagramForTutor = generateAiDiagramForTutor;
+window.generateResearchInfographic = generateResearchInfographic;
+window.generateCbtQuestionDiagram = generateCbtQuestionDiagram;
 window.generateCbtTest = generateCbtTest;
 window.generateAiChapterTest = generateAiChapterTest;
 window.submitCbtTest = submitCbtTest;
