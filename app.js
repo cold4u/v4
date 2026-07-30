@@ -26,7 +26,17 @@ function safeSetLocalStorage(key, value) {
     localStorage.setItem(key, value);
     return true;
   } catch (e) {
-    return false;
+    console.warn(`[localStorage Quota Exceeded] Failed setting ${key}:`, e);
+    try {
+      // Clear non-essential cached counts to free space
+      localStorage.removeItem("neet_api_calls_count");
+      localStorage.removeItem("neet_api_tokens_used");
+      localStorage.removeItem("neet_api_cached_count");
+      localStorage.setItem(key, value);
+      return true;
+    } catch (retryErr) {
+      return false;
+    }
   }
 }
 
@@ -37,6 +47,29 @@ function safeRemoveLocalStorage(key) {
   } catch (e) {
     return false;
   }
+}
+
+function sanitizeInputText(str, maxLength = 1000) {
+  if (typeof str !== 'string') return '';
+  return str.trim().slice(0, maxLength);
+}
+
+function validateNumberRange(val, min, max, fallback) {
+  const num = parseInt(val, 10);
+  if (isNaN(num)) return fallback;
+  return Math.max(min, Math.min(max, num));
+}
+
+function debounce(func, wait = 500) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 function safeGetSessionStorage(key, fallback = null) {
@@ -555,11 +588,11 @@ function safeSetSessionStorage(key, value) {
     // 278-Day Plan Engine
     let parsedStartDate = new Date(safeGetLocalStorage("planStart") || "2026-07-29T00:00:00");
     if (isNaN(parsedStartDate.getTime())) {
-      parsedStartDate = new Date(2026, 6, 29, 0, 0, 0); // July 29, 2026
+      parsedStartDate = new Date(Date.UTC(2026, 6, 29, 0, 0, 0)); // July 29, 2026 UTC
     }
     const START_DATE = parsedStartDate;
-    const EXAM_DATE = new Date(2027, 4, 2, 0, 0, 0); // May 2, 2027 (NEET Exam Day)
-    const DIFF = Math.ceil((EXAM_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1; // 278 days
+    const EXAM_DATE = new Date(Date.UTC(2027, 4, 2, 3, 0, 0)); // May 2, 2027 08:30 IST / 03:00 UTC
+    const DIFF = Math.ceil((EXAM_DATE.getTime() - START_DATE.getTime()) / (1000 * 60 * 60 * 24)) + 1; // 278 days
 
     
         // --- Yakeen NEET 2.0 2027 Date-Based Planner Database ---
@@ -2620,8 +2653,8 @@ function safeSetSessionStorage(key, value) {
 
     // Overview tab calculations
     function updateCountdown() {
-      const now = new Date();
-      const diff = EXAM_DATE - now;
+      const now = Date.now();
+      const diff = EXAM_DATE.getTime() - now;
       
       const cdDays = document.getElementById('cd-days');
       const cdHours = document.getElementById('cd-hours');
@@ -4678,9 +4711,14 @@ function toggleStudyTimer() {
   }
 }
 
+let studyTimerStartTimestamp = 0;
+let studyTimerInitialDuration = 0;
+
 function startStudyTimer() {
   if (studyTimerIsRunning) return;
   studyTimerIsRunning = true;
+  studyTimerStartTimestamp = Date.now();
+  studyTimerInitialDuration = studyTimerSecondsRemaining;
   
   const btn = document.getElementById('timer-start-btn');
   if (btn) {
@@ -4690,7 +4728,8 @@ function startStudyTimer() {
   }
   
   studyTimerInterval = setInterval(() => {
-    studyTimerSecondsRemaining--;
+    const elapsed = Math.floor((Date.now() - studyTimerStartTimestamp) / 1000);
+    studyTimerSecondsRemaining = Math.max(0, studyTimerInitialDuration - elapsed);
     updateTimerUI();
     
     if (studyTimerSecondsRemaining <= 0) {
@@ -4698,7 +4737,7 @@ function startStudyTimer() {
       studyTimerIsRunning = false;
       handleTimerCompletion();
     }
-  }, 1000);
+  }, 500);
 }
 
 function pauseStudyTimer() {
@@ -7321,16 +7360,28 @@ function toggleNotifications() {
     showToast("🔔 Notifications Disabled");
     initNotificationsUI();
   } else {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
+    try {
+      const p = Notification.requestPermission();
+      if (p && typeof p.then === 'function') {
+        p.then(permission => {
+          if (permission === 'granted') {
+            safeSetLocalStorage('neet_v3_notifications_enabled', 'true');
+            showToast("🔔 Notifications Enabled successfully!");
+            sendStudyNotification("NEET Planner Ready!", "You will receive reminders for mock tests and revision slots here.");
+          } else {
+            showToast("⚠️ Notification permission was denied or dismissed.");
+          }
+          initNotificationsUI();
+        }).catch(() => initNotificationsUI());
+      } else if (Notification.permission === 'granted') {
         safeSetLocalStorage('neet_v3_notifications_enabled', 'true');
-        showToast("🔔 Notifications Enabled successfully!");
-        sendStudyNotification("NEET Planner Ready!", "You will receive reminders for mock tests and revision slots here.");
-      } else {
-        alert("Permission denied! Please enable notifications in your browser settings.");
+        showToast("🔔 Notifications Enabled!");
+        initNotificationsUI();
       }
+    } catch(err) {
+      console.warn("Notification request permission error:", err);
       initNotificationsUI();
-    });
+    }
   }
 }
 

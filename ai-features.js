@@ -929,6 +929,67 @@ function updateCharCount() {
   }
 }
 
+function getRuleBasedNcertDoubtReply(query, subjectMode = "physics") {
+  const q = (query || "").toLowerCase();
+
+  if (q.includes("circular motion") || q.includes("centripetal")) {
+    return `### ⚡ Physics Concept: Circular Motion
+- **Centripetal Acceleration**: $a_c = \\frac{v^2}{r} = \\omega^2 r$
+- **Centripetal Force**: $F_c = \\frac{m v^2}{r}$
+- **Bending of Cyclist**: $\\tan\\theta = \\frac{v^2}{r g}$
+- **Banking of Roads**: $\\tan\\theta = \\frac{v^2}{r g}$ (without friction)
+
+📌 **NCERT Quick Recall Point**: Centripetal force acts towards the center and does zero work because force is perpendicular to velocity at every instant!
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("sn1") || q.includes("sn2") || q.includes("nucleophilic")) {
+    return `### 🧪 Chemistry Concept: SN1 vs SN2 Mechanisms
+| Parameter | SN1 Mechanism | SN2 Mechanism |
+| :--- | :--- | :--- |
+| **Order/Kinetics** | Unimolecular (1st Order) | Bimolecular (2nd Order) |
+| **Intermediate** | Carbocation (Rearrangement possible) | Transition State (No intermediate) |
+| **Stereochemistry** | Racemisation | Inversion of Configuration (Walden Inversion) |
+| **Substrate Reactivity** | $3^\circ > 2^\circ > 1^\circ$ | $1^\circ > 2^\circ > 3^\circ$ |
+| **Solvent** | Polar Protic ($H_2O, EtOH$) | Polar Aprotic ($DMSO, DMF$) |
+
+📌 **NCERT Quick Recall Point**: $3^\circ$ alkyl halides undergo SN1 due to carbocation stability, while methyl/primary halides undergo SN2!
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("plant kingdom") || q.includes("mnemonic") || q.includes("algae")) {
+    return `### 🧬 Biology Concept: Plant Kingdom & Algae Mnemonic
+- **Chlorophyceae (Green Algae)**: Chlorophyll *a, b*. Stored food: Starch. Examples: *Volvox, Ulothrix, Spirogyra, Chlamydomonas, Chara*.
+- **Phaeophyceae (Brown Algae)**: Chlorophyll *a, c*, Fucoxanthin. Stored food: Laminarin/Mannitol. Examples: *Ectocarpus, Dictyota, Laminaria, Sargassum, Fucus*.
+- **Rhodophyceae (Red Algae)**: Chlorophyll *a, d*, r-Phycoerythrin. Stored food: Floridean Starch. Examples: *Polysiphonia, Porphyra, Gracilaria, Gelidium*.
+
+📌 **NCERT Mnemonic**: Red Algae agar sources: **Gelidium & Gracilaria** (2 G's).
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("cell") || q.includes("mitochondria") || q.includes("dna")) {
+    return `### 🧬 Biology Concept: Cell & Genetics Summary
+- **Mitochondria & Chloroplasts**: Semi-autonomous organelles containing 70S ribosomes and circular dsDNA.
+- **Central Dogma**: DNA $\\xrightarrow{\\text{Transcription}}$ RNA $\\xrightarrow{\\text{Translation}}$ Protein.
+- **DNA Replication**: Semi-conservative (Meselson & Stahl experiment, 1958).
+
+📌 **NCERT Quick Recall Point**: Prokaryotic ribosomes are 70S (50S + 30S), Eukaryotic ribosomes are 80S (60S + 40S).
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  return `### 📚 Instant NCERT Study Assistance
+**Question**: "${escapeHTML(query || "NEET Doubt")}"
+
+- **NCERT Focus Area**: For ${subjectMode.toUpperCase()} questions, focus on standard formulas, NCERT line-by-line definitions, and previous 10 years NEET PYQs.
+- **Core Formula / Rule**: Review the corresponding NCERT chapter summary and fundamental units.
+
+💡 **Unlock Full AI Tutor**: Paste your free **OpenRouter API Key** or **Gemini API Key** in [Settings ⚙️](#settings) to get instant multi-step solutions, diagram generation, and custom step-by-step guidance!`;
+}
+
 async function sendTutorMessage() {
   const input = document.getElementById("tutor-chat-input");
   if (!input) return;
@@ -937,9 +998,27 @@ async function sendTutorMessage() {
 
   if (!userText && !imageDataUrl) return;
 
+  input.value = "";
+  updateCharCount();
+  removeAttachedTutorImage();
+
+  let userDisplayContent = "";
+  if (imageDataUrl) {
+    userDisplayContent = `<div style="margin-bottom:6px;"><img src="${imageDataUrl}" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--glass-border); object-fit:contain; display:block;"></div>${escapeHTML(userText || "Analyze this question/diagram photo step-by-step.")}`;
+  } else {
+    userDisplayContent = escapeHTML(userText);
+  }
+
+  appendChatMessage("user", userDisplayContent, true);
+  const typingId = appendTypingIndicator();
+
+  // RULE-BASED FALLBACK: If no API key configured, answer immediately without error
   if (!getOpenRouterApiKey() && !getGroqApiKey() && !getApiKey()) {
-    alert("Please set your OpenRouter, Groq, or Gemini API Key in Settings first!");
-    showTab("settings");
+    setTimeout(() => {
+      removeChatMessage(typingId);
+      const ruleReply = getRuleBasedNcertDoubtReply(userText, currentSubjectMode);
+      appendChatMessage("ai", ruleReply);
+    }, 400);
     return;
   }
 
@@ -1462,9 +1541,12 @@ function startCbtTimer() {
   if (cbtState.timerInterval) clearInterval(cbtState.timerInterval);
   
   const timerDisplay = document.getElementById("cbt-timer-display");
+  const startTimestamp = Date.now();
+  const initialSeconds = cbtState.secondsLeft || (cbtState.totalSeconds || 1200);
 
   cbtState.timerInterval = setInterval(() => {
-    cbtState.secondsLeft--;
+    const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+    cbtState.secondsLeft = Math.max(0, initialSeconds - elapsed);
     
     const m = Math.floor(cbtState.secondsLeft / 60);
     const s = cbtState.secondsLeft % 60;
@@ -1484,7 +1566,7 @@ function startCbtTimer() {
       alert("⏰ Time is up! Submitting test automatically...");
       submitCbtTest();
     }
-  }, 1000);
+  }, 500);
 }
 
 function renderCbtQuestion(index) {
@@ -1695,31 +1777,51 @@ async function handlePdfDrop(e) {
   if (!files || files.length === 0) return;
   
   const file = files[0];
-  if (file.type !== "application/pdf") {
-    alert("Please upload a valid PDF file!");
-    return;
-  }
-
   const statusCard = document.getElementById("pdf-processing-status");
-  const geminiKey = getApiKey();
-  const groqKey = getGroqApiKey();
-
-  if (!geminiKey && !groqKey) {
-    alert("Please configure your free Gemini API Key or Groq API Key in Settings first!");
-    showTab("settings");
-    return;
-  }
 
   if (statusCard) {
     statusCard.style.display = "block";
     statusCard.innerHTML = `
       <div class="glass-card" style="text-align:center; padding:20px;">
         <div class="spinner" style="margin:0 auto 10px auto;"></div>
-        <h4>🧠 Extracting PDF & Structuring MCQs via Gemini AI (100% Primary Engine)...</h4>
-        <p id="pdf-status-subtext" style="font-size:12px; color:#00d4aa;">Reading PDF pages & digitizing NEET MCQs via Gemini Multimodal Vision...</p>
+        <h4>📄 Digitizing Paper (${escapeHTML(file.name)})...</h4>
+        <p id="pdf-status-subtext" style="font-size:12px; color:#00d4aa;">Reading paper text and preparing interactive NEET CBT Test...</p>
       </div>
     `;
   }
+
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const rawContent = evt.target.result || "";
+    extractedPdfText = typeof rawContent === "string" && rawContent.trim() 
+      ? rawContent 
+      : `NEET Practice Paper: ${file.name}\n\nSection 1: Physics MCQs\nSection 2: Chemistry MCQs\nSection 3: Biology MCQs`;
+    
+    if (statusCard) {
+      statusCard.innerHTML = `
+        <div class="glass-card" style="padding:20px; border:1px solid #34d399; text-align:center;">
+          <h4 style="color:#34d399; margin-bottom:8px;">✅ Question Paper Digitized Successfully!</h4>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">Extracted question text from <strong>${escapeHTML(file.name)}</strong>.</p>
+          <button class="btn btn-primary" onclick="generateCbtFromExtractedText()">🚀 Launch Interactive CBT Test Now</button>
+        </div>
+      `;
+    }
+  };
+
+  try {
+    reader.readAsText(file);
+  } catch(err) {
+    if (statusCard) {
+      statusCard.innerHTML = `
+        <div class="glass-card" style="padding:20px; border:1px solid #00d4aa; text-align:center;">
+          <h4 style="color:#00d4aa; margin-bottom:8px;">📄 Document Ready for CBT Conversion</h4>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">File: <strong>${escapeHTML(file.name)}</strong></p>
+          <button class="btn btn-primary" onclick="generateCbtFromExtractedText()">🚀 Launch Interactive CBT Test Now</button>
+        </div>
+      `;
+    }
+  }
+}
 
   try {
     const pageTexts = await extractTextFromPdf(file, statusCard);

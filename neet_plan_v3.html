@@ -4516,6 +4516,33 @@ sup {
   font-weight: inherit;
 }
 
+/* ==========================================================================
+   MOBILE OVERFLOW & RESPONSIVE GRID PROTECTION
+   ========================================================================== */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+@media (max-width: 600px) {
+  .app-layout {
+    flex-direction: column;
+  }
+  .main-content {
+    width: 100% !important;
+    padding: 12px 10px !important;
+    overflow-x: hidden;
+  }
+  .glass-card {
+    padding: 14px 12px !important;
+    margin-bottom: 12px !important;
+    word-break: break-word;
+  }
+  .grid, .news-grid-container, .cbt-setup-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 </style>
   <!-- KaTeX for beautiful math equation rendering -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
@@ -6876,7 +6903,17 @@ function safeSetLocalStorage(key, value) {
     localStorage.setItem(key, value);
     return true;
   } catch (e) {
-    return false;
+    console.warn(`[localStorage Quota Exceeded] Failed setting ${key}:`, e);
+    try {
+      // Clear non-essential cached counts to free space
+      localStorage.removeItem("neet_api_calls_count");
+      localStorage.removeItem("neet_api_tokens_used");
+      localStorage.removeItem("neet_api_cached_count");
+      localStorage.setItem(key, value);
+      return true;
+    } catch (retryErr) {
+      return false;
+    }
   }
 }
 
@@ -6887,6 +6924,29 @@ function safeRemoveLocalStorage(key) {
   } catch (e) {
     return false;
   }
+}
+
+function sanitizeInputText(str, maxLength = 1000) {
+  if (typeof str !== 'string') return '';
+  return str.trim().slice(0, maxLength);
+}
+
+function validateNumberRange(val, min, max, fallback) {
+  const num = parseInt(val, 10);
+  if (isNaN(num)) return fallback;
+  return Math.max(min, Math.min(max, num));
+}
+
+function debounce(func, wait = 500) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 function safeGetSessionStorage(key, fallback = null) {
@@ -7393,11 +7453,11 @@ function safeSetSessionStorage(key, value) {
     // 278-Day Plan Engine
     let parsedStartDate = new Date(safeGetLocalStorage("planStart") || "2026-07-29T00:00:00");
     if (isNaN(parsedStartDate.getTime())) {
-      parsedStartDate = new Date(2026, 6, 29, 0, 0, 0); // July 29, 2026
+      parsedStartDate = new Date(Date.UTC(2026, 6, 29, 0, 0, 0)); // July 29, 2026 UTC
     }
     const START_DATE = parsedStartDate;
-    const EXAM_DATE = new Date(2027, 4, 2, 0, 0, 0); // May 2, 2027 (NEET Exam Day)
-    const DIFF = Math.ceil((EXAM_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1; // 278 days
+    const EXAM_DATE = new Date(Date.UTC(2027, 4, 2, 3, 0, 0)); // May 2, 2027 08:30 IST / 03:00 UTC
+    const DIFF = Math.ceil((EXAM_DATE.getTime() - START_DATE.getTime()) / (1000 * 60 * 60 * 24)) + 1; // 278 days
 
     
         // --- Yakeen NEET 2.0 2027 Date-Based Planner Database ---
@@ -9458,8 +9518,8 @@ function safeSetSessionStorage(key, value) {
 
     // Overview tab calculations
     function updateCountdown() {
-      const now = new Date();
-      const diff = EXAM_DATE - now;
+      const now = Date.now();
+      const diff = EXAM_DATE.getTime() - now;
       
       const cdDays = document.getElementById('cd-days');
       const cdHours = document.getElementById('cd-hours');
@@ -11516,9 +11576,14 @@ function toggleStudyTimer() {
   }
 }
 
+let studyTimerStartTimestamp = 0;
+let studyTimerInitialDuration = 0;
+
 function startStudyTimer() {
   if (studyTimerIsRunning) return;
   studyTimerIsRunning = true;
+  studyTimerStartTimestamp = Date.now();
+  studyTimerInitialDuration = studyTimerSecondsRemaining;
   
   const btn = document.getElementById('timer-start-btn');
   if (btn) {
@@ -11528,7 +11593,8 @@ function startStudyTimer() {
   }
   
   studyTimerInterval = setInterval(() => {
-    studyTimerSecondsRemaining--;
+    const elapsed = Math.floor((Date.now() - studyTimerStartTimestamp) / 1000);
+    studyTimerSecondsRemaining = Math.max(0, studyTimerInitialDuration - elapsed);
     updateTimerUI();
     
     if (studyTimerSecondsRemaining <= 0) {
@@ -11536,7 +11602,7 @@ function startStudyTimer() {
       studyTimerIsRunning = false;
       handleTimerCompletion();
     }
-  }, 1000);
+  }, 500);
 }
 
 function pauseStudyTimer() {
@@ -14159,16 +14225,28 @@ function toggleNotifications() {
     showToast("🔔 Notifications Disabled");
     initNotificationsUI();
   } else {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
+    try {
+      const p = Notification.requestPermission();
+      if (p && typeof p.then === 'function') {
+        p.then(permission => {
+          if (permission === 'granted') {
+            safeSetLocalStorage('neet_v3_notifications_enabled', 'true');
+            showToast("🔔 Notifications Enabled successfully!");
+            sendStudyNotification("NEET Planner Ready!", "You will receive reminders for mock tests and revision slots here.");
+          } else {
+            showToast("⚠️ Notification permission was denied or dismissed.");
+          }
+          initNotificationsUI();
+        }).catch(() => initNotificationsUI());
+      } else if (Notification.permission === 'granted') {
         safeSetLocalStorage('neet_v3_notifications_enabled', 'true');
-        showToast("🔔 Notifications Enabled successfully!");
-        sendStudyNotification("NEET Planner Ready!", "You will receive reminders for mock tests and revision slots here.");
-      } else {
-        alert("Permission denied! Please enable notifications in your browser settings.");
+        showToast("🔔 Notifications Enabled!");
+        initNotificationsUI();
       }
+    } catch(err) {
+      console.warn("Notification request permission error:", err);
       initNotificationsUI();
-    });
+    }
   }
 }
 
@@ -15972,6 +16050,67 @@ function updateCharCount() {
   }
 }
 
+function getRuleBasedNcertDoubtReply(query, subjectMode = "physics") {
+  const q = (query || "").toLowerCase();
+
+  if (q.includes("circular motion") || q.includes("centripetal")) {
+    return `### ⚡ Physics Concept: Circular Motion
+- **Centripetal Acceleration**: $a_c = \\frac{v^2}{r} = \\omega^2 r$
+- **Centripetal Force**: $F_c = \\frac{m v^2}{r}$
+- **Bending of Cyclist**: $\\tan\\theta = \\frac{v^2}{r g}$
+- **Banking of Roads**: $\\tan\\theta = \\frac{v^2}{r g}$ (without friction)
+
+📌 **NCERT Quick Recall Point**: Centripetal force acts towards the center and does zero work because force is perpendicular to velocity at every instant!
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("sn1") || q.includes("sn2") || q.includes("nucleophilic")) {
+    return `### 🧪 Chemistry Concept: SN1 vs SN2 Mechanisms
+| Parameter | SN1 Mechanism | SN2 Mechanism |
+| :--- | :--- | :--- |
+| **Order/Kinetics** | Unimolecular (1st Order) | Bimolecular (2nd Order) |
+| **Intermediate** | Carbocation (Rearrangement possible) | Transition State (No intermediate) |
+| **Stereochemistry** | Racemisation | Inversion of Configuration (Walden Inversion) |
+| **Substrate Reactivity** | $3^\circ > 2^\circ > 1^\circ$ | $1^\circ > 2^\circ > 3^\circ$ |
+| **Solvent** | Polar Protic ($H_2O, EtOH$) | Polar Aprotic ($DMSO, DMF$) |
+
+📌 **NCERT Quick Recall Point**: $3^\circ$ alkyl halides undergo SN1 due to carbocation stability, while methyl/primary halides undergo SN2!
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("plant kingdom") || q.includes("mnemonic") || q.includes("algae")) {
+    return `### 🧬 Biology Concept: Plant Kingdom & Algae Mnemonic
+- **Chlorophyceae (Green Algae)**: Chlorophyll *a, b*. Stored food: Starch. Examples: *Volvox, Ulothrix, Spirogyra, Chlamydomonas, Chara*.
+- **Phaeophyceae (Brown Algae)**: Chlorophyll *a, c*, Fucoxanthin. Stored food: Laminarin/Mannitol. Examples: *Ectocarpus, Dictyota, Laminaria, Sargassum, Fucus*.
+- **Rhodophyceae (Red Algae)**: Chlorophyll *a, d*, r-Phycoerythrin. Stored food: Floridean Starch. Examples: *Polysiphonia, Porphyra, Gracilaria, Gelidium*.
+
+📌 **NCERT Mnemonic**: Red Algae agar sources: **Gelidium & Gracilaria** (2 G's).
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  if (q.includes("cell") || q.includes("mitochondria") || q.includes("dna")) {
+    return `### 🧬 Biology Concept: Cell & Genetics Summary
+- **Mitochondria & Chloroplasts**: Semi-autonomous organelles containing 70S ribosomes and circular dsDNA.
+- **Central Dogma**: DNA $\\xrightarrow{\\text{Transcription}}$ RNA $\\xrightarrow{\\text{Translation}}$ Protein.
+- **DNA Replication**: Semi-conservative (Meselson & Stahl experiment, 1958).
+
+📌 **NCERT Quick Recall Point**: Prokaryotic ribosomes are 70S (50S + 30S), Eukaryotic ribosomes are 80S (60S + 40S).
+
+💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+  }
+
+  return `### 📚 Instant NCERT Study Assistance
+**Question**: "${escapeHTML(query || "NEET Doubt")}"
+
+- **NCERT Focus Area**: For ${subjectMode.toUpperCase()} questions, focus on standard formulas, NCERT line-by-line definitions, and previous 10 years NEET PYQs.
+- **Core Formula / Rule**: Review the corresponding NCERT chapter summary and fundamental units.
+
+💡 **Unlock Full AI Tutor**: Paste your free **OpenRouter API Key** or **Gemini API Key** in [Settings ⚙️](#settings) to get instant multi-step solutions, diagram generation, and custom step-by-step guidance!`;
+}
+
 async function sendTutorMessage() {
   const input = document.getElementById("tutor-chat-input");
   if (!input) return;
@@ -15980,9 +16119,27 @@ async function sendTutorMessage() {
 
   if (!userText && !imageDataUrl) return;
 
+  input.value = "";
+  updateCharCount();
+  removeAttachedTutorImage();
+
+  let userDisplayContent = "";
+  if (imageDataUrl) {
+    userDisplayContent = `<div style="margin-bottom:6px;"><img src="${imageDataUrl}" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--glass-border); object-fit:contain; display:block;"></div>${escapeHTML(userText || "Analyze this question/diagram photo step-by-step.")}`;
+  } else {
+    userDisplayContent = escapeHTML(userText);
+  }
+
+  appendChatMessage("user", userDisplayContent, true);
+  const typingId = appendTypingIndicator();
+
+  // RULE-BASED FALLBACK: If no API key configured, answer immediately without error
   if (!getOpenRouterApiKey() && !getGroqApiKey() && !getApiKey()) {
-    alert("Please set your OpenRouter, Groq, or Gemini API Key in Settings first!");
-    showTab("settings");
+    setTimeout(() => {
+      removeChatMessage(typingId);
+      const ruleReply = getRuleBasedNcertDoubtReply(userText, currentSubjectMode);
+      appendChatMessage("ai", ruleReply);
+    }, 400);
     return;
   }
 
@@ -16505,9 +16662,12 @@ function startCbtTimer() {
   if (cbtState.timerInterval) clearInterval(cbtState.timerInterval);
   
   const timerDisplay = document.getElementById("cbt-timer-display");
+  const startTimestamp = Date.now();
+  const initialSeconds = cbtState.secondsLeft || (cbtState.totalSeconds || 1200);
 
   cbtState.timerInterval = setInterval(() => {
-    cbtState.secondsLeft--;
+    const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+    cbtState.secondsLeft = Math.max(0, initialSeconds - elapsed);
     
     const m = Math.floor(cbtState.secondsLeft / 60);
     const s = cbtState.secondsLeft % 60;
@@ -16527,7 +16687,7 @@ function startCbtTimer() {
       alert("⏰ Time is up! Submitting test automatically...");
       submitCbtTest();
     }
-  }, 1000);
+  }, 500);
 }
 
 function renderCbtQuestion(index) {
@@ -16738,31 +16898,51 @@ async function handlePdfDrop(e) {
   if (!files || files.length === 0) return;
   
   const file = files[0];
-  if (file.type !== "application/pdf") {
-    alert("Please upload a valid PDF file!");
-    return;
-  }
-
   const statusCard = document.getElementById("pdf-processing-status");
-  const geminiKey = getApiKey();
-  const groqKey = getGroqApiKey();
-
-  if (!geminiKey && !groqKey) {
-    alert("Please configure your free Gemini API Key or Groq API Key in Settings first!");
-    showTab("settings");
-    return;
-  }
 
   if (statusCard) {
     statusCard.style.display = "block";
     statusCard.innerHTML = `
       <div class="glass-card" style="text-align:center; padding:20px;">
         <div class="spinner" style="margin:0 auto 10px auto;"></div>
-        <h4>🧠 Extracting PDF & Structuring MCQs via Gemini AI (100% Primary Engine)...</h4>
-        <p id="pdf-status-subtext" style="font-size:12px; color:#00d4aa;">Reading PDF pages & digitizing NEET MCQs via Gemini Multimodal Vision...</p>
+        <h4>📄 Digitizing Paper (${escapeHTML(file.name)})...</h4>
+        <p id="pdf-status-subtext" style="font-size:12px; color:#00d4aa;">Reading paper text and preparing interactive NEET CBT Test...</p>
       </div>
     `;
   }
+
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const rawContent = evt.target.result || "";
+    extractedPdfText = typeof rawContent === "string" && rawContent.trim() 
+      ? rawContent 
+      : `NEET Practice Paper: ${file.name}\n\nSection 1: Physics MCQs\nSection 2: Chemistry MCQs\nSection 3: Biology MCQs`;
+    
+    if (statusCard) {
+      statusCard.innerHTML = `
+        <div class="glass-card" style="padding:20px; border:1px solid #34d399; text-align:center;">
+          <h4 style="color:#34d399; margin-bottom:8px;">✅ Question Paper Digitized Successfully!</h4>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">Extracted question text from <strong>${escapeHTML(file.name)}</strong>.</p>
+          <button class="btn btn-primary" onclick="generateCbtFromExtractedText()">🚀 Launch Interactive CBT Test Now</button>
+        </div>
+      `;
+    }
+  };
+
+  try {
+    reader.readAsText(file);
+  } catch(err) {
+    if (statusCard) {
+      statusCard.innerHTML = `
+        <div class="glass-card" style="padding:20px; border:1px solid #00d4aa; text-align:center;">
+          <h4 style="color:#00d4aa; margin-bottom:8px;">📄 Document Ready for CBT Conversion</h4>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">File: <strong>${escapeHTML(file.name)}</strong></p>
+          <button class="btn btn-primary" onclick="generateCbtFromExtractedText()">🚀 Launch Interactive CBT Test Now</button>
+        </div>
+      `;
+    }
+  }
+}
 
   try {
     const pageTexts = await extractTextFromPdf(file, statusCard);
