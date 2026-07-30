@@ -498,6 +498,14 @@ async function testOpenRouterApiConnection() {
   }
 }
 
+// Bind immediately to window object for bulletproof inline HTML onclick handlers
+window.getOpenRouterApiKey = getOpenRouterApiKey;
+window.saveOpenRouterApiKey = saveOpenRouterApiKey;
+window.removeOpenRouterApiKey = removeOpenRouterApiKey;
+window.updateOpenRouterApiKeyStatusUI = updateOpenRouterApiKeyStatusUI;
+window.toggleOpenRouterKeyVisibility = toggleOpenRouterKeyVisibility;
+window.testOpenRouterApiConnection = testOpenRouterApiConnection;
+
 async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null, options = {}) {
   const apiKey = getOpenRouterApiKey();
   if (!apiKey) {
