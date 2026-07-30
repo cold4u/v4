@@ -766,33 +766,55 @@ async function callAiWithFailover(prompt, systemInstruction = "", onStatus = nul
   const geminiKey = getApiKey();
   const groqKey = getGroqApiKey();
 
-  // 1. PRIMARY ENGINE: OpenRouter API (Multi-Model Llama 3.3 70B, DeepSeek R1, Gemini 2.0, Qwen 2.5)
-  if (openrouterKey) {
-    try {
-      return await callOpenRouterAPI(prompt, systemInstruction, onStatus, options);
-    } catch (openRouterErr) {
-      console.warn("[Failover Engine] OpenRouter failed/limit reached. Failing over to Gemini/Groq...", openRouterErr);
-      if (onStatus) onStatus("⚠️ OpenRouter limit reached → Seamless failover to backup AI engine...");
+  const isImageOrVisionTask = !!(options.imageDataUrl || options.isImageGeneration);
+
+  // 1. FOR IMAGE & DIAGRAM GENERATION: Use OpenRouter API as primary engine
+  if (isImageOrVisionTask) {
+    if (openrouterKey) {
+      try {
+        return await callOpenRouterAPI(prompt, systemInstruction, onStatus, options);
+      } catch (openRouterErr) {
+        console.warn("[Failover Engine] OpenRouter image generation failed. Failing over to Gemini/Groq...", openRouterErr);
+        if (onStatus) onStatus("⚠️ OpenRouter image engine failed → Failing over to backup...");
+      }
     }
+    if (geminiKey) {
+      return await callGeminiAPI(prompt, systemInstruction, onStatus, options);
+    }
+    if (groqKey) {
+      return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+    }
+    throw new Error("NO_API_KEY");
   }
 
-  // 2. BACKUP ENGINE: Gemini API (6-Model Fallback Ring)
+  // 2. FOR TEXT GENERATION: Primary: Gemini API -> Secondary: Groq API -> Backup: OpenRouter
   if (geminiKey) {
     try {
       return await callGeminiAPI(prompt, systemInstruction, onStatus, options);
     } catch (geminiErr) {
-      if (groqKey && (geminiErr.message === "HTTP_429_EXCEEDED" || geminiErr.message.includes("429") || geminiErr.message.includes("cooling down") || geminiErr.message.includes("quota"))) {
-        console.warn("[Failover Engine] Gemini rate limit reached! Failing over to Groq Cloud API...");
-        if (onStatus) onStatus("⚡ Gemini rate limit reached → Seamless failover to Groq AI (Llama-3.3 70B)...");
-        return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+      console.warn("[Failover Engine] Gemini text generation error/limit. Failing over to Groq...", geminiErr);
+      if (onStatus) onStatus("⚡ Gemini limit reached → Seamless failover to Groq AI (Llama 3.3 70B)...");
+      if (groqKey) {
+        try {
+          return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+        } catch (groqErr) {
+          console.warn("[Failover Engine] Groq also failed. Trying OpenRouter...", groqErr);
+        }
       }
-      throw geminiErr;
     }
   }
 
-  // 3. BACKUP FAILOVER ENGINE: Groq Cloud API
   if (groqKey) {
-    return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+    try {
+      if (onStatus) onStatus("⚡ Processing with Groq AI (Llama 3.3 70B)...");
+      return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+    } catch (groqErr) {
+      console.warn("[Failover Engine] Groq text generation failed. Trying OpenRouter...", groqErr);
+    }
+  }
+
+  if (openrouterKey) {
+    return await callOpenRouterAPI(prompt, systemInstruction, onStatus, options);
   }
 
   throw new Error("NO_API_KEY");
