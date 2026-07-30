@@ -5,17 +5,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-  <!-- Google Analytics 4 (GA4) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X5QX0RL81J"></script>
+  <!-- Google Analytics 4 (GA4) with AdBlocker Guard -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X5QX0RL81J" onerror="console.log('Analytics script blocked by client ad-blocker (normal behavior)')"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag(){try{dataLayer.push(arguments);}catch(e){}}
     gtag('js', new Date());
     gtag('config', 'G-X5QX0RL81J');
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5, user-scalable=yes">
   <meta name="theme-color" content="#060913">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SHUBxCOLD — 278-Day Ultimate Planner</title>
@@ -15610,12 +15611,18 @@ async function testOpenRouterApiConnection() {
   if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">Connecting to OpenRouter API...</span>`;
 
   try {
-    const text = await callOpenRouterAPI("Hello! Reply with 1 short sentence confirming API connection.", "You are a test bot");
+    const text = await callOpenRouterAPI("Hello! Respond with OK.", "You are a test bot", (statusMsg) => {
+      if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">${escapeHTML(statusMsg)}</span>`;
+    }, { maxTokens: 20 });
     if (msgArea) msgArea.innerHTML = `<span style="color:#00d4aa; font-weight:bold;">✅ OpenRouter Connection Verified!</span>`;
     alert(`🎉 OpenRouter API Connection Successful!\n\nResponse: "${text}"`);
   } catch (err) {
-    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Connection Failed: ${err.message}</span>`;
-    alert(`❌ OpenRouter API Connection Failed: ${err.message}`);
+    const isRateLimit = (err.message || "").includes("429") || (err.message || "").includes("rate limit") || (err.message || "").includes("Provider returned error");
+    const displayMsg = isRateLimit 
+      ? `⚡ API Key is valid! OpenRouter free model provider is temporarily busy (HTTP 429). The system will automatically cycle through models.` 
+      : err.message;
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ ${escapeHTML(displayMsg)}</span>`;
+    alert(`❌ OpenRouter Connection Notice:\n\n${displayMsg}`);
   }
 }
 

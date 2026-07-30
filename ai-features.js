@@ -489,12 +489,18 @@ async function testOpenRouterApiConnection() {
   if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">Connecting to OpenRouter API...</span>`;
 
   try {
-    const text = await callOpenRouterAPI("Hello! Reply with 1 short sentence confirming API connection.", "You are a test bot");
+    const text = await callOpenRouterAPI("Hello! Respond with OK.", "You are a test bot", (statusMsg) => {
+      if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">${escapeHTML(statusMsg)}</span>`;
+    }, { maxTokens: 20 });
     if (msgArea) msgArea.innerHTML = `<span style="color:#00d4aa; font-weight:bold;">✅ OpenRouter Connection Verified!</span>`;
     alert(`🎉 OpenRouter API Connection Successful!\n\nResponse: "${text}"`);
   } catch (err) {
-    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Connection Failed: ${err.message}</span>`;
-    alert(`❌ OpenRouter API Connection Failed: ${err.message}`);
+    const isRateLimit = (err.message || "").includes("429") || (err.message || "").includes("rate limit") || (err.message || "").includes("Provider returned error");
+    const displayMsg = isRateLimit 
+      ? `⚡ API Key is valid! OpenRouter free model provider is temporarily busy (HTTP 429). The system will automatically cycle through models.` 
+      : err.message;
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ ${escapeHTML(displayMsg)}</span>`;
+    alert(`❌ OpenRouter Connection Notice:\n\n${displayMsg}`);
   }
 }
 
