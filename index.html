@@ -1471,6 +1471,13 @@
 
         <div id="pdf-processing-status" style="display:none; margin-top:16px;"></div>
         <div id="pdf-extracted-list"></div>
+
+        <div class="glass-card" style="margin-top:20px; padding:20px; border:1px solid rgba(0,212,170,0.3);">
+          <h3 style="margin-top:0; color:#00d4aa; font-size:15px;">📝 Or Paste Question Paper / Study Notes Text Below</h3>
+          <p style="font-size:12px; color:#aaa; margin-bottom:10px;">Paste any textbook questions, chapter notes, or practice questions to instantly convert them into a live NEET CBT Test with timer & solutions.</p>
+          <textarea id="manual-cbt-text-input" class="form-control" placeholder="Paste your question text here (e.g. Q1. What is the SI unit of force? A) N B) J C) W D) Pa...)" style="width:100%; height:120px; font-size:12px; margin-bottom:12px; font-family:var(--font-mono);"></textarea>
+          <button class="btn btn-primary" onclick="generateCbtFromExtractedText(document.getElementById('manual-cbt-text-input').value)" style="width:100%;">🚀 Convert Text & Launch Live CBT Test</button>
+        </div>
       </div>
     </section>
 
