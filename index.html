@@ -1481,6 +1481,36 @@
 
     <section id="settings" class="tab-content">
 
+      <!-- OPENROUTER AI API BYOK SETUP CARD -->
+      <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(147,51,234,0.4);">
+        <h3>🌐 OpenRouter AI API Setup (Multi-Model BYOK Engine)</h3>
+        <p style="font-size:12.5px; color:#ccc; margin-top:4px;">Enter your free OpenRouter API Key to power AI Tutor Doubt Solver, CBT Question Generator, PDF Extractor, and Research with Llama 3.3 70B, DeepSeek R1, Gemini 2.0 & Qwen 2.5.</p>
+        
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-weight:bold; font-size:13px;">OpenRouter API Key</label>
+            <div id="openrouter-key-status-badge"><span style="color:#aaa; font-size:11px;">Optional BYOK Engine</span></div>
+          </div>
+          
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="setting-openrouter-key" class="form-control" placeholder="Paste your sk-or-... key here" style="flex:1;" oninput="onOpenRouterKeyTyped()">
+            <button type="button" class="btn btn-secondary" onclick="toggleOpenRouterKeyVisibility()">👁️</button>
+          </div>
+          <div id="openrouter-key-inline-msg" style="font-size:12px; margin-top:2px;"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <button type="button" id="btn-save-openrouter-key" class="btn btn-primary" onclick="saveOpenRouterApiKey()">💾 Save OpenRouter Key</button>
+            <button type="button" id="btn-test-openrouter-key" class="btn btn-secondary" onclick="testOpenRouterApiConnection()">🧪 Test Connection</button>
+            <a href="https://openrouter.ai/keys" target="_blank" class="btn btn-secondary" style="text-decoration:none;">🌐 Get Free OpenRouter Key ↗</a>
+            <button type="button" id="btn-remove-openrouter-key" class="btn btn-secondary" onclick="removeOpenRouterApiKey()" style="color:#ef4444; margin-left:auto;">🗑️ Remove Key</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:10px; background:rgba(147,51,234,0.06); border:1px solid rgba(147,51,234,0.2); border-radius:8px; font-size:11.5px; color:#ddd;">
+          🔒 <strong>Privacy Guarantee:</strong> Your API key is stored ONLY in your browser localStorage. It connects directly to OpenRouter's official API (`openrouter.ai/api/v1`).
+        </div>
+      </div>
+
       <!-- GEMINI API BYOK SETUP CARD -->
       <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(251,191,36,0.4);">
         <h3>🔑 Gemini AI API Setup (BYOK - Bring Your Own Key)</h3>

@@ -5976,6 +5976,36 @@ sup {
 
     <section id="settings" class="tab-content">
 
+      <!-- OPENROUTER AI API BYOK SETUP CARD -->
+      <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(147,51,234,0.4);">
+        <h3>🌐 OpenRouter AI API Setup (Multi-Model BYOK Engine)</h3>
+        <p style="font-size:12.5px; color:#ccc; margin-top:4px;">Enter your free OpenRouter API Key to power AI Tutor Doubt Solver, CBT Question Generator, PDF Extractor, and Research with Llama 3.3 70B, DeepSeek R1, Gemini 2.0 & Qwen 2.5.</p>
+        
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-weight:bold; font-size:13px;">OpenRouter API Key</label>
+            <div id="openrouter-key-status-badge"><span style="color:#aaa; font-size:11px;">Optional BYOK Engine</span></div>
+          </div>
+          
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="setting-openrouter-key" class="form-control" placeholder="Paste your sk-or-... key here" style="flex:1;" oninput="onOpenRouterKeyTyped()">
+            <button type="button" class="btn btn-secondary" onclick="toggleOpenRouterKeyVisibility()">👁️</button>
+          </div>
+          <div id="openrouter-key-inline-msg" style="font-size:12px; margin-top:2px;"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <button type="button" id="btn-save-openrouter-key" class="btn btn-primary" onclick="saveOpenRouterApiKey()">💾 Save OpenRouter Key</button>
+            <button type="button" id="btn-test-openrouter-key" class="btn btn-secondary" onclick="testOpenRouterApiConnection()">🧪 Test Connection</button>
+            <a href="https://openrouter.ai/keys" target="_blank" class="btn btn-secondary" style="text-decoration:none;">🌐 Get Free OpenRouter Key ↗</a>
+            <button type="button" id="btn-remove-openrouter-key" class="btn btn-secondary" onclick="removeOpenRouterApiKey()" style="color:#ef4444; margin-left:auto;">🗑️ Remove Key</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:10px; background:rgba(147,51,234,0.06); border:1px solid rgba(147,51,234,0.2); border-radius:8px; font-size:11.5px; color:#ddd;">
+          🔒 <strong>Privacy Guarantee:</strong> Your API key is stored ONLY in your browser localStorage. It connects directly to OpenRouter's official API (`openrouter.ai/api/v1`).
+        </div>
+      </div>
+
       <!-- GEMINI API BYOK SETUP CARD -->
       <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(251,191,36,0.4);">
         <h3>🔑 Gemini AI API Setup (BYOK - Bring Your Own Key)</h3>
@@ -15393,6 +15423,180 @@ function quickSaveApiKey(btn) {
 }
 
 /* ==========================================================================
+   FEATURE: OPENROUTER AI API ENGINE (MULTI-MODEL BYOK)
+   ========================================================================== */
+
+const OPENROUTER_MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",
+  "google/gemini-2.0-flash-001",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "mistralai/mistral-7b-instruct:free"
+];
+
+function getOpenRouterApiKey() {
+  return (localStorage.getItem("openrouter_api_key") || "").trim();
+}
+
+function onOpenRouterKeyTyped() {
+  const msgArea = document.getElementById("openrouter-key-inline-msg");
+  if (msgArea) msgArea.innerHTML = "";
+}
+
+function saveOpenRouterApiKey() {
+  const input = document.getElementById("setting-openrouter-key");
+  const msgArea = document.getElementById("openrouter-key-inline-msg");
+  if (!input) return;
+
+  const val = input.value.trim();
+  if (!val) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Please paste a valid OpenRouter API key (sk-or-...)</span>`;
+    alert("Please enter a valid OpenRouter API key!");
+    return;
+  }
+
+  localStorage.setItem("openrouter_api_key", val);
+  updateOpenRouterApiKeyStatusUI(true);
+  renderSetupRequiredCards();
+  if (msgArea) msgArea.innerHTML = `<span style="color:#00d4aa; font-weight:bold;">✅ OpenRouter API Key saved successfully!</span>`;
+  alert("🎉 OpenRouter API Key saved successfully!");
+}
+
+function removeOpenRouterApiKey() {
+  localStorage.removeItem("openrouter_api_key");
+  const input = document.getElementById("setting-openrouter-key");
+  if (input) input.value = "";
+  const msgArea = document.getElementById("openrouter-key-inline-msg");
+  if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">🗑️ OpenRouter API Key removed.</span>`;
+  updateOpenRouterApiKeyStatusUI(true);
+  renderSetupRequiredCards();
+}
+
+function updateOpenRouterApiKeyStatusUI(forceSync = false) {
+  const key = getOpenRouterApiKey();
+  const badge = document.getElementById("openrouter-key-status-badge");
+  const input = document.getElementById("setting-openrouter-key");
+
+  if (input && (forceSync || !input.value)) {
+    input.value = key;
+  }
+
+  if (badge) {
+    if (key) {
+      badge.innerHTML = `<span style="background:rgba(0,212,170,0.15); color:#00d4aa; border:1px solid rgba(0,212,170,0.4); padding:3px 10px; border-radius:12px; font-weight:bold; font-size:11px;">✅ Active BYOK Engine</span>`;
+    } else {
+      badge.innerHTML = `<span style="color:#aaa; font-size:11px;">Optional BYOK Engine</span>`;
+    }
+  }
+}
+
+function toggleOpenRouterKeyVisibility() {
+  const input = document.getElementById("setting-openrouter-key");
+  if (!input) return;
+  input.type = input.type === "password" ? "text" : "password";
+}
+
+async function testOpenRouterApiConnection() {
+  const input = document.getElementById("setting-openrouter-key");
+  const msgArea = document.getElementById("openrouter-key-inline-msg");
+
+  if (input && input.value.trim()) {
+    localStorage.setItem("openrouter_api_key", input.value.trim());
+    updateOpenRouterApiKeyStatusUI(true);
+  }
+
+  const key = getOpenRouterApiKey();
+  if (!key) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444;">Please enter your OpenRouter API key first!</span>`;
+    alert("Please paste your OpenRouter API key first!");
+    return;
+  }
+
+  if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">Connecting to OpenRouter API...</span>`;
+
+  try {
+    const text = await callOpenRouterAPI("Hello! Reply with 1 short sentence confirming API connection.", "You are a test bot");
+    if (msgArea) msgArea.innerHTML = `<span style="color:#00d4aa; font-weight:bold;">✅ OpenRouter Connection Verified!</span>`;
+    alert(`🎉 OpenRouter API Connection Successful!\n\nResponse: "${text}"`);
+  } catch (err) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Connection Failed: ${err.message}</span>`;
+    alert(`❌ OpenRouter API Connection Failed: ${err.message}`);
+  }
+}
+
+async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null, options = {}) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) {
+    throw new Error("NO_OPENROUTER_KEY");
+  }
+
+  if (onStatus) onStatus("⚡ Processing with OpenRouter AI...");
+
+  const messages = [];
+  if (systemInstruction) {
+    messages.push({ role: "system", content: systemInstruction });
+  }
+  messages.push({ role: "user", content: prompt });
+
+  const selectedModel = options.model || "meta-llama/llama-3.3-70b-instruct:free";
+  const modelsToTry = [selectedModel, ...OPENROUTER_MODELS.filter(m => m !== selectedModel)];
+
+  for (const m of modelsToTry) {
+    try {
+      if (onStatus && m !== selectedModel) {
+        onStatus(`⚡ OpenRouter: Falling back to model ${m}...`);
+      }
+
+      const requestBody = {
+        model: m,
+        messages: messages,
+        temperature: options.temperature || 0.3,
+        max_tokens: options.maxTokens || 4096
+      };
+
+      if (options.jsonMode) {
+        requestBody.response_format = { type: "json_object" };
+      }
+
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": window.location.href || "https://cold4u.github.io/v4/",
+          "X-Title": "NEET Study Hub v4",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const msg = errData.error?.message || `HTTP ${res.status}`;
+        console.warn(`OpenRouter model ${m} error:`, msg);
+        if (res.status === 401 || msg.includes("Invalid API key")) {
+          throw new Error("INVALID_OPENROUTER_KEY");
+        }
+        continue;
+      }
+
+      const data = await res.json();
+      const answerText = data.choices?.[0]?.message?.content;
+      if (!answerText) throw new Error("Empty response from OpenRouter API.");
+
+      const estTokens = Math.ceil((prompt.length + (systemInstruction ? systemInstruction.length : 0) + answerText.length) / 4);
+      recordTokenUsage(estTokens, false);
+
+      return answerText;
+    } catch (err) {
+      if (err.message === "INVALID_OPENROUTER_KEY") throw err;
+      console.warn(`OpenRouter model ${m} failed:`, err);
+    }
+  }
+
+  throw new Error("All OpenRouter models failed or returned errors.");
+}
+
+/* ==========================================================================
    FEATURE: GROQ CLOUD API ENGINE (SECONDARY BACKUP FAILOVER)
    ========================================================================== */
 
@@ -15540,24 +15744,48 @@ async function callGroqAPI(prompt, systemInstruction = "", onStatus = null, opti
 }
 
 async function callAiWithFailover(prompt, systemInstruction = "", onStatus = null, options = {}) {
-  try {
-    return await callGeminiAPI(prompt, systemInstruction, onStatus, options);
-  } catch (geminiErr) {
-    const groqKey = getGroqApiKey();
-    if (groqKey && (geminiErr.message === "HTTP_429_EXCEEDED" || geminiErr.message.includes("429") || geminiErr.message.includes("cooling down") || geminiErr.message.includes("quota"))) {
-      console.warn("[Failover Engine] Gemini rate limit reached! Failing over to Groq Cloud API...");
-      if (onStatus) onStatus("⚡ Gemini rate limit reached → Seamless failover to Groq AI (Llama-3.3 70B)...");
-      return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+  const openrouterKey = getOpenRouterApiKey();
+  const geminiKey = getApiKey();
+  const groqKey = getGroqApiKey();
+
+  // 1. PRIMARY ENGINE: OpenRouter API (Multi-Model Llama 3.3 70B, DeepSeek R1, Gemini 2.0, Qwen 2.5)
+  if (openrouterKey) {
+    try {
+      return await callOpenRouterAPI(prompt, systemInstruction, onStatus, options);
+    } catch (openRouterErr) {
+      console.warn("[Failover Engine] OpenRouter failed/limit reached. Failing over to Gemini/Groq...", openRouterErr);
+      if (onStatus) onStatus("⚠️ OpenRouter limit reached → Seamless failover to backup AI engine...");
     }
-    throw geminiErr;
   }
+
+  // 2. BACKUP ENGINE: Gemini API (6-Model Fallback Ring)
+  if (geminiKey) {
+    try {
+      return await callGeminiAPI(prompt, systemInstruction, onStatus, options);
+    } catch (geminiErr) {
+      if (groqKey && (geminiErr.message === "HTTP_429_EXCEEDED" || geminiErr.message.includes("429") || geminiErr.message.includes("cooling down") || geminiErr.message.includes("quota"))) {
+        console.warn("[Failover Engine] Gemini rate limit reached! Failing over to Groq Cloud API...");
+        if (onStatus) onStatus("⚡ Gemini rate limit reached → Seamless failover to Groq AI (Llama-3.3 70B)...");
+        return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+      }
+      throw geminiErr;
+    }
+  }
+
+  // 3. BACKUP FAILOVER ENGINE: Groq Cloud API
+  if (groqKey) {
+    return await callGroqAPI(prompt, systemInstruction, onStatus, options);
+  }
+
+  throw new Error("NO_API_KEY");
 }
 
 function renderSetupRequiredCards() {
+  const openrouterKey = getOpenRouterApiKey();
   const geminiKey = getApiKey();
   const groqKey = getGroqApiKey();
   const serperKey = getSerperApiKey();
-  const hasAiKey = !!(geminiKey || groqKey);
+  const hasAiKey = !!(openrouterKey || geminiKey || groqKey);
 
   const setupElements = document.querySelectorAll(".ai-setup-required-card");
   setupElements.forEach(el => {
@@ -15567,7 +15795,7 @@ function renderSetupRequiredCards() {
     } else if (parentSection && parentSection.id === "ai-tutor") {
       el.style.display = hasAiKey ? "none" : "block";
     } else {
-      el.style.display = (geminiKey || groqKey) ? "none" : "block";
+      el.style.display = hasAiKey ? "none" : "block";
     }
   });
 
@@ -15579,7 +15807,7 @@ function renderSetupRequiredCards() {
     } else if (parentSection && parentSection.id === "ai-tutor") {
       el.style.display = hasAiKey ? "block" : "none";
     } else {
-      el.style.display = (geminiKey || groqKey) ? "block" : "none";
+      el.style.display = hasAiKey ? "block" : "none";
     }
   });
 }
@@ -17656,6 +17884,14 @@ window.insertSubscript = insertSubscript;
 window.insertSuperscript = insertSuperscript;
 window.insertChemistrySymbol = insertChemistrySymbol;
 
+window.getOpenRouterApiKey = getOpenRouterApiKey;
+window.saveOpenRouterApiKey = saveOpenRouterApiKey;
+window.removeOpenRouterApiKey = removeOpenRouterApiKey;
+window.updateOpenRouterApiKeyStatusUI = updateOpenRouterApiKeyStatusUI;
+window.toggleOpenRouterKeyVisibility = toggleOpenRouterKeyVisibility;
+window.testOpenRouterApiConnection = testOpenRouterApiConnection;
+window.callOpenRouterAPI = callOpenRouterAPI;
+
 window.getNewsDataApiKey = getNewsDataApiKey;
 window.saveNewsDataApiKey = saveNewsDataApiKey;
 window.removeNewsDataApiKey = removeNewsDataApiKey;
@@ -17675,6 +17911,7 @@ window.performTavilySearch = performTavilySearch;
 document.addEventListener("DOMContentLoaded", () => {
   updateApiKeyStatusUI(true);
   updateGroqApiKeyStatusUI(true);
+  updateOpenRouterApiKeyStatusUI(true);
   updateNewsDataApiKeyStatusUI(true);
   updateSerperApiKeyStatusUI(true);
   updateTavilyApiKeyStatusUI(true);
@@ -17690,6 +17927,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const removeBtn = document.getElementById("btn-remove-api-key");
   if (removeBtn) removeBtn.onclick = removeApiKey;
+
+  const saveOpenRouterBtn = document.getElementById("btn-save-openrouter-key");
+  if (saveOpenRouterBtn) saveOpenRouterBtn.onclick = saveOpenRouterApiKey;
+
+  const testOpenRouterBtn = document.getElementById("btn-test-openrouter-key");
+  if (testOpenRouterBtn) testOpenRouterBtn.onclick = testOpenRouterApiConnection;
+
+  const removeOpenRouterBtn = document.getElementById("btn-remove-openrouter-key");
+  if (removeOpenRouterBtn) removeOpenRouterBtn.onclick = removeOpenRouterApiKey;
 
   const saveGroqBtn = document.getElementById("btn-save-groq-key");
   if (saveGroqBtn) saveGroqBtn.onclick = saveGroqApiKey;
@@ -17731,6 +17977,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function handleAiTabSwitch(tabId) {
   updateApiKeyStatusUI(true);
   updateGroqApiKeyStatusUI(true);
+  updateOpenRouterApiKeyStatusUI(true);
   updateNewsDataApiKeyStatusUI(true);
   updateSerperApiKeyStatusUI(true);
   updateTavilyApiKeyStatusUI(true);
