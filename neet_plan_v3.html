@@ -16151,20 +16151,6 @@ async function sendTutorMessage() {
     return;
   }
 
-  input.value = "";
-  updateCharCount();
-  removeAttachedTutorImage();
-
-  let userDisplayContent = "";
-  if (imageDataUrl) {
-    userDisplayContent = `<div style="margin-bottom:6px;"><img src="${imageDataUrl}" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--glass-border); object-fit:contain; display:block;"></div>${escapeHTML(userText || "Analyze this question/diagram photo step-by-step.")}`;
-  } else {
-    userDisplayContent = escapeHTML(userText);
-  }
-
-  appendChatMessage("user", userDisplayContent, true);
-  const typingId = appendTypingIndicator();
-
   try {
     let sysPrompt = SYSTEM_PROMPTS[currentSubjectMode] || SYSTEM_PROMPTS.physics;
 
@@ -16946,79 +16932,6 @@ async function handlePdfDrop(e) {
           <h4 style="color:#00d4aa; margin-bottom:8px;">📄 Document Ready for CBT Conversion</h4>
           <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">File: <strong>${escapeHTML(file.name)}</strong></p>
           <button class="btn btn-primary" onclick="generateCbtFromExtractedText()">🚀 Launch Interactive CBT Test Now</button>
-        </div>
-      `;
-    }
-  }
-}
-
-  try {
-    const pageTexts = await extractTextFromPdf(file, statusCard);
-    extractedPdfText = pageTexts.join("\n\n");
-
-    const prompt = `Analyze the following extracted PDF text and return a structured JSON array of ALL NEET multiple-choice questions (MCQs) found in the document (up to 50 questions).
-Rules:
-1. Output ONLY a raw JSON array — no markdown, no code fences, no commentary.
-2. Format as compact JSON objects to save bandwidth and fit up to 50 questions:
-{"q":"Question text","o":["Option A","Option B","Option C","Option D"],"c":0,"e":"Short 1-line solution","s":"Physics/Chemistry/Biology"}
-3. "c" is the 0-indexed integer of the correct option (0 for A, 1 for B, 2 for C, 3 for D).
-4. Use plain text for formulas (e.g. "F = m × a", "C6H12O6", "9.8 m/s^2"). Never use raw LaTeX.
-5. Extract as many questions as available (up to 50).
-
-PDF TEXT CONTENT:
-${extractedPdfText.slice(0, 25000)}`;
-
-    const sysPrompt = "You are an expert NTA NEET exam paper digitizer. Output ONLY a valid compact JSON array. No markdown fences. Keep explanations very short (1 line). Use plain text for formulas, never LaTeX.";
-    let rawRes = null;
-
-    // 1. PRIMARY ENGINE: Google Gemini API (100% Absolute Priority)
-    if (geminiKey) {
-      try {
-        if (document.getElementById("pdf-status-subtext")) {
-          document.getElementById("pdf-status-subtext").textContent = "🧠 Gemini AI analyzing paper layout and structuring NEET MCQs...";
-        }
-        rawRes = await callGeminiAPI(prompt, sysPrompt, (msg) => {
-          const sub = document.getElementById("pdf-status-subtext");
-          if (sub) sub.textContent = msg;
-        }, { maxTokens: 8192, jsonMode: true });
-      } catch (gemErr) {
-        console.warn("[PDF Extractor] Gemini primary engine limit/error. Failing over to Groq API backup...", gemErr);
-      }
-    }
-
-    // 2. FAILOVER BACKUP ENGINE: Groq Cloud API (Llama-3.3 70B)
-    if (!rawRes && groqKey) {
-      if (document.getElementById("pdf-status-subtext")) {
-        document.getElementById("pdf-status-subtext").textContent = "⚡ Switched to Groq AI Backup Engine to digitize NEET MCQs...";
-      }
-      rawRes = await callGroqAPI(prompt, sysPrompt, (msg) => {
-        const sub = document.getElementById("pdf-status-subtext");
-        if (sub) sub.textContent = msg;
-      }, { maxTokens: 8192, jsonMode: true });
-    }
-
-    if (!rawRes) {
-      throw new Error("Could not connect to Gemini API or Groq API. Please check your API keys.");
-    }
-
-    const parsedQuestions = robustParseJSON(rawRes);
-
-    if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-      extractedQuestionsList = parsedQuestions;
-      if (statusCard) statusCard.style.display = "none";
-      // Directly launch CBT Mock Test!
-      showTab("ai-mocktest");
-      startCbtExam(extractedQuestionsList, extractedQuestionsList.length * 120);
-      return;
-    } else {
-      throw new Error("Could not parse structured questions from PDF.");
-    }
-
-  } catch (err) {
-    if (statusCard) {
-      statusCard.innerHTML = `
-        <div class="glass-card" style="border:1px solid #ef4444; color:#ef4444; padding:15px;">
-          ❌ PDF Extraction Failed: ${err.message}
         </div>
       `;
     }
