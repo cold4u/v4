@@ -520,11 +520,13 @@ window.testOpenRouterApiConnection = testOpenRouterApiConnection;
 function getHuggingFaceApiKey() {
   return (localStorage.getItem("huggingface_api_token") || "").trim();
 }
+window.getHuggingFaceApiKey = getHuggingFaceApiKey;
 
 function onHuggingFaceKeyTyped() {
   const msgArea = document.getElementById("huggingface-key-inline-msg");
   if (msgArea) msgArea.innerHTML = "";
 }
+window.onHuggingFaceKeyTyped = onHuggingFaceKeyTyped;
 
 function saveHuggingFaceApiKey() {
   const input = document.getElementById("setting-huggingface-key");
@@ -543,6 +545,7 @@ function saveHuggingFaceApiKey() {
   if (msgArea) msgArea.innerHTML = `<span style="color:#ec4899; font-weight:bold;">✅ Hugging Face Token saved successfully!</span>`;
   alert("🎉 Hugging Face Access Token saved successfully!");
 }
+window.saveHuggingFaceApiKey = saveHuggingFaceApiKey;
 
 function removeHuggingFaceApiKey() {
   localStorage.removeItem("huggingface_api_token");
@@ -552,6 +555,7 @@ function removeHuggingFaceApiKey() {
   if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">🗑️ Hugging Face Token removed.</span>`;
   updateHuggingFaceApiKeyStatusUI(true);
 }
+window.removeHuggingFaceApiKey = removeHuggingFaceApiKey;
 
 function updateHuggingFaceApiKeyStatusUI(forceSync = false) {
   const key = getHuggingFaceApiKey();
@@ -570,12 +574,14 @@ function updateHuggingFaceApiKeyStatusUI(forceSync = false) {
     }
   }
 }
+window.updateHuggingFaceApiKeyStatusUI = updateHuggingFaceApiKeyStatusUI;
 
 function toggleHuggingFaceKeyVisibility() {
   const input = document.getElementById("setting-huggingface-key");
   if (!input) return;
   input.type = input.type === "password" ? "text" : "password";
 }
+window.toggleHuggingFaceKeyVisibility = toggleHuggingFaceKeyVisibility;
 
 async function testHuggingFaceApiConnection() {
   const input = document.getElementById("setting-huggingface-key");
@@ -604,13 +610,6 @@ async function testHuggingFaceApiConnection() {
     alert(`❌ Hugging Face API Connection Failed: ${err.message}`);
   }
 }
-
-// Bind immediately to window object
-window.getHuggingFaceApiKey = getHuggingFaceApiKey;
-window.saveHuggingFaceApiKey = saveHuggingFaceApiKey;
-window.removeHuggingFaceApiKey = removeHuggingFaceApiKey;
-window.updateHuggingFaceApiKeyStatusUI = updateHuggingFaceApiKeyStatusUI;
-window.toggleHuggingFaceKeyVisibility = toggleHuggingFaceKeyVisibility;
 window.testHuggingFaceApiConnection = testHuggingFaceApiConnection;
 
 async function callHuggingFaceImageAPI(prompt) {
