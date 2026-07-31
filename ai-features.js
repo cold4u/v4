@@ -1003,15 +1003,23 @@ function getRuleBasedNcertDoubtReply(query, subjectMode = "physics") {
 💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
   }
 
+  if (q.includes("chloroplast") || q.includes("thylakoid") || q.includes("photosynthesis") || q.includes("granum")) {
+    return `### 🍃 Biology Concept: Structure of Chloroplast
+- **Double Membrane**: Outer & Inner membranes separated by intermembrane space.
+- **Thylakoids & Grana**: Disc-like sacs stacked into Grana (site of Light Reactions & ATP/NADPH synthesis).
+- **Stroma**: Protein-rich fluid matrix containing Calvin Cycle enzymes, circular dsDNA, and 70S ribosomes.
+- **Stroma Lamellae**: Interconnecting membranous tubules linking separate grana stacks.
+
+📌 **NCERT Quick Recall Point**: Light reactions occur in Thylakoids/Grana; Dark reactions (Calvin Cycle) occur in the Stroma!`;
+  }
+
   if (q.includes("plant kingdom") || q.includes("mnemonic") || q.includes("algae")) {
     return `### 🧬 Biology Concept: Plant Kingdom & Algae Mnemonic
 - **Chlorophyceae (Green Algae)**: Chlorophyll *a, b*. Stored food: Starch. Examples: *Volvox, Ulothrix, Spirogyra, Chlamydomonas, Chara*.
 - **Phaeophyceae (Brown Algae)**: Chlorophyll *a, c*, Fucoxanthin. Stored food: Laminarin/Mannitol. Examples: *Ectocarpus, Dictyota, Laminaria, Sargassum, Fucus*.
 - **Rhodophyceae (Red Algae)**: Chlorophyll *a, d*, r-Phycoerythrin. Stored food: Floridean Starch. Examples: *Polysiphonia, Porphyra, Gracilaria, Gelidium*.
 
-📌 **NCERT Mnemonic**: Red Algae agar sources: **Gelidium & Gracilaria** (2 G's).
-
-💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+📌 **NCERT Mnemonic**: Red Algae agar sources: **Gelidium & Gracilaria** (2 G's).`;
   }
 
   if (q.includes("cell") || q.includes("mitochondria") || q.includes("dna")) {
@@ -1020,18 +1028,14 @@ function getRuleBasedNcertDoubtReply(query, subjectMode = "physics") {
 - **Central Dogma**: DNA $\\xrightarrow{\\text{Transcription}}$ RNA $\\xrightarrow{\\text{Translation}}$ Protein.
 - **DNA Replication**: Semi-conservative (Meselson & Stahl experiment, 1958).
 
-📌 **NCERT Quick Recall Point**: Prokaryotic ribosomes are 70S (50S + 30S), Eukaryotic ribosomes are 80S (60S + 40S).
-
-💡 *Tip: Paste a free OpenRouter or Gemini API Key in Settings to unlock deep multi-step AI solutions!*`;
+📌 **NCERT Quick Recall Point**: Prokaryotic ribosomes are 70S (50S + 30S), Eukaryotic ribosomes are 80S (60S + 40S).`;
   }
 
   return `### 📚 Instant NCERT Study Assistance
 **Question**: "${escapeHTML(query || "NEET Doubt")}"
 
 - **NCERT Focus Area**: For ${subjectMode.toUpperCase()} questions, focus on standard formulas, NCERT line-by-line definitions, and previous 10 years NEET PYQs.
-- **Core Formula / Rule**: Review the corresponding NCERT chapter summary and fundamental units.
-
-💡 **Unlock Full AI Tutor**: Paste your free **OpenRouter API Key** or **Gemini API Key** in [Settings ⚙️](#settings) to get instant multi-step solutions, diagram generation, and custom step-by-step guidance!`;
+- **Core Formula / Rule**: Review the corresponding NCERT chapter summary and fundamental units.`;
 }
 
 async function sendTutorMessage() {
@@ -1056,12 +1060,20 @@ async function sendTutorMessage() {
   appendChatMessage("user", userDisplayContent, true);
   const typingId = appendTypingIndicator();
 
+  const autoImgKeywords = ["image", "diagram", "draw", "figure", "show", "chloroplast", "mitochondria", "neuron", "heart", "dna", "cell"];
+  const shouldAutoShowImage = autoImgKeywords.some(k => (userText || "").toLowerCase().includes(k));
+
   // RULE-BASED FALLBACK: If no API key configured, answer immediately without error
   if (!getOpenRouterApiKey() && !getGroqApiKey() && !getApiKey()) {
     setTimeout(() => {
       removeChatMessage(typingId);
       const ruleReply = getRuleBasedNcertDoubtReply(userText, currentSubjectMode);
       appendChatMessage("ai", ruleReply);
+
+      if (shouldAutoShowImage) {
+        const chatBody = document.getElementById("tutor-chat-body");
+        if (chatBody) generateAiImageWithOpenRouter(userText, chatBody);
+      }
     }, 400);
     return;
   }
@@ -1089,13 +1101,9 @@ async function sendTutorMessage() {
     removeChatMessage(typingId);
     appendChatMessage("ai", aiResponse);
 
-    // If query asks for an image/diagram/figure, auto-generate real textbook image figure
-    const qLower = (userText || "").toLowerCase();
-    if (qLower.includes("image") || qLower.includes("diagram") || qLower.includes("draw") || qLower.includes("figure") || qLower.includes("show me")) {
+    if (shouldAutoShowImage) {
       const chatBody = document.getElementById("tutor-chat-body");
-      if (chatBody) {
-        generateAiImageWithOpenRouter(userText, chatBody);
-      }
+      if (chatBody) generateAiImageWithOpenRouter(userText, chatBody);
     }
 
   } catch (err) {
