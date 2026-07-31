@@ -15790,39 +15790,48 @@ async function callHuggingFaceImageAPI(prompt) {
   let lastError = null;
 
   for (const m of modelsToTry) {
-    try {
-      const res = await fetch(`https://api-inference.huggingface.co/models/${m}`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          inputs: `${prompt}, highly detailed NCERT textbook scientific illustration, 8k resolution, crisp labels`
-        })
-      });
+    const urls = [
+      `https://router.huggingface.co/hf-inference/models/${m}`,
+      `https://router.huggingface.co/models/${m}`,
+      `https://api-inference.huggingface.co/models/${m}`
+    ];
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const msg = errJson.error || `HTTP ${res.status}`;
-        console.warn(`[HF API] Model ${m} error:`, msg);
-        lastError = new Error(`HF Model ${m} failed: ${msg}`);
-        continue;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            inputs: `${prompt}, highly detailed NCERT textbook scientific illustration, 8k resolution, crisp labels`
+          })
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          const msg = errJson.error || `HTTP ${res.status}`;
+          console.warn(`[HF API] Endpoint ${url} error:`, msg);
+          lastError = new Error(`HF Model ${m} (${url}): ${msg}`);
+          continue;
+        }
+
+        const blob = await res.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        lastError = e;
+        console.warn(`[HF API] Network error on ${url}:`, e.message);
       }
-
-      const blob = await res.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (e) {
-      lastError = e;
     }
   }
 
-  throw lastError || new Error("All Hugging Face image models failed.");
+  throw lastError || new Error("All Hugging Face image endpoints failed.");
 }
 
 window.callHuggingFaceImageAPI = callHuggingFaceImageAPI;
