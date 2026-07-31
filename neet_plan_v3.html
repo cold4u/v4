@@ -15991,9 +15991,9 @@ window.quickSaveApiKey = quickSaveApiKey;
 let currentSubjectMode = "physics";
 
 const SYSTEM_PROMPTS = {
-  physics: `You are an expert Physics tutor. Help the user solve any doubt with clear step-by-step mathematical solutions, Free Body Diagrams, vector analysis, unit checks, and formulas. Format physical units and equations clearly. End with a helpful "Quick Recall Point".`,
-  chemistry: `You are an expert Chemistry tutor (Physical, Organic, Inorganic). Help the user solve any doubt with clear reaction mechanisms, balanced equations, electron displacement concepts, and key points. Format chemical formulas with proper subscripts/superscripts (e.g. H₂O, Fe³⁺, SO₄²⁻). End with a helpful "Quick Recall Point".`,
-  biology: `You are an expert Biology tutor. Help the user solve any doubt with clear explanations, textbook facts, diagrams, classification tables, mnemonics, and key terms. End with a helpful "Quick Recall Point".`
+  physics: `You are an expert NTA NEET Physics tutor. Provide concise, clear, NCERT-syllabus aligned solutions. For numericals, show key formulas and direct calculation steps clearly. Avoid unnecessary multi-page derivations or out-of-syllabus calculations unless explicitly requested. End with a 1-sentence "Quick Recall Point".`,
+  chemistry: `You are an expert NTA NEET Chemistry tutor (Physical, Organic, Inorganic). Provide concise, clear, NCERT-focused answers with balanced equations or key mechanisms. Format chemical formulas properly (e.g. H₂O, Fe³⁺). Avoid out-of-syllabus theory. End with a 1-sentence "Quick Recall Point".`,
+  biology: `You are an expert NTA NEET Biology tutor. Provide crisp, concise, NCERT line-by-line factual answers. Explain concepts directly in clean bullet points strictly aligned with NCERT Class 11/12 textbooks. Avoid out-of-syllabus extra theory. End with a 1-sentence "Quick Recall Point".`
 };
 
 function selectSubjectMode(mode) {
@@ -16217,6 +16217,15 @@ async function sendTutorMessage() {
 
     removeChatMessage(typingId);
     appendChatMessage("ai", aiResponse);
+
+    // If query asks for an image/diagram/figure, auto-generate real textbook image figure
+    const qLower = (userText || "").toLowerCase();
+    if (qLower.includes("image") || qLower.includes("diagram") || qLower.includes("draw") || qLower.includes("figure") || qLower.includes("show me")) {
+      const chatBody = document.getElementById("tutor-chat-body");
+      if (chatBody) {
+        generateAiImageWithOpenRouter(userText, chatBody);
+      }
+    }
 
   } catch (err) {
     removeChatMessage(typingId);
