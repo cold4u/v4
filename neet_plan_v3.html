@@ -6058,6 +6058,36 @@ html, body {
         </div>
       </div>
 
+      <!-- HUGGING FACE AI IMAGE SETUP CARD -->
+      <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(236,72,153,0.4);">
+        <h3>🤗 Hugging Face AI Image Setup (FLUX.1 & SD 3.5 Engine)</h3>
+        <p style="font-size:12.5px; color:#ccc; margin-top:4px;">Enter your free Hugging Face User Access Token (`hf_...`) to power AI Image & Scientific Diagram Generation with FLUX.1-schnell & Stable Diffusion 3.5 Large.</p>
+        
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-weight:bold; font-size:13px;">Hugging Face Access Token</label>
+            <div id="huggingface-key-status-badge"><span style="color:#aaa; font-size:11px;">Optional Image Engine</span></div>
+          </div>
+          
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="setting-huggingface-key" class="form-control" placeholder="Paste your hf_... access token here" style="flex:1;" oninput="onHuggingFaceKeyTyped()">
+            <button type="button" class="btn btn-secondary" onclick="toggleHuggingFaceKeyVisibility()">👁️</button>
+          </div>
+          <div id="huggingface-key-inline-msg" style="font-size:12px; margin-top:2px;"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <button type="button" id="btn-save-huggingface-key" class="btn btn-primary" style="background:#ec4899; border-color:#ec4899;" onclick="saveHuggingFaceApiKey()">💾 Save Hugging Face Token</button>
+            <button type="button" id="btn-test-huggingface-key" class="btn btn-secondary" onclick="testHuggingFaceApiConnection()">🧪 Test Connection</button>
+            <a href="https://huggingface.co/settings/tokens" target="_blank" class="btn btn-secondary" style="text-decoration:none;">🌐 Get Free HF Token ↗</a>
+            <button type="button" id="btn-remove-huggingface-key" class="btn btn-secondary" onclick="removeHuggingFaceApiKey()" style="color:#ef4444; margin-left:auto;">🗑️ Remove Token</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:10px; background:rgba(236,72,153,0.06); border:1px solid rgba(236,72,153,0.2); border-radius:8px; font-size:11.5px; color:#ddd;">
+          🤗 <strong>Hugging Face Serverless Inference:</strong> Connects directly to Hugging Face Inference API (`router.huggingface.co/hf-inference/v1`) using `FLUX.1-schnell` & `Stable Diffusion 3.5 Large`.
+        </div>
+      </div>
+
       <!-- GEMINI API BYOK SETUP CARD -->
       <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(251,191,36,0.4);">
         <h3>🔑 Gemini AI API Setup (BYOK - Bring Your Own Key)</h3>
@@ -15642,6 +15672,157 @@ window.updateOpenRouterApiKeyStatusUI = updateOpenRouterApiKeyStatusUI;
 window.toggleOpenRouterKeyVisibility = toggleOpenRouterKeyVisibility;
 window.testOpenRouterApiConnection = testOpenRouterApiConnection;
 
+/* ==========================================================================
+   FEATURE: HUGGING FACE AI IMAGE API ENGINE (FLUX.1 & STABLE DIFFUSION 3.5)
+   ========================================================================== */
+
+function getHuggingFaceApiKey() {
+  return (localStorage.getItem("huggingface_api_token") || "").trim();
+}
+
+function onHuggingFaceKeyTyped() {
+  const msgArea = document.getElementById("huggingface-key-inline-msg");
+  if (msgArea) msgArea.innerHTML = "";
+}
+
+function saveHuggingFaceApiKey() {
+  const input = document.getElementById("setting-huggingface-key");
+  const msgArea = document.getElementById("huggingface-key-inline-msg");
+  if (!input) return;
+
+  const val = input.value.trim();
+  if (!val) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Please paste a valid Hugging Face Access Token (hf_...)</span>`;
+    alert("Please enter a valid Hugging Face Token!");
+    return;
+  }
+
+  localStorage.setItem("huggingface_api_token", val);
+  updateHuggingFaceApiKeyStatusUI(true);
+  if (msgArea) msgArea.innerHTML = `<span style="color:#ec4899; font-weight:bold;">✅ Hugging Face Token saved successfully!</span>`;
+  alert("🎉 Hugging Face Access Token saved successfully!");
+}
+
+function removeHuggingFaceApiKey() {
+  localStorage.removeItem("huggingface_api_token");
+  const input = document.getElementById("setting-huggingface-key");
+  if (input) input.value = "";
+  const msgArea = document.getElementById("huggingface-key-inline-msg");
+  if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">🗑️ Hugging Face Token removed.</span>`;
+  updateHuggingFaceApiKeyStatusUI(true);
+}
+
+function updateHuggingFaceApiKeyStatusUI(forceSync = false) {
+  const key = getHuggingFaceApiKey();
+  const badge = document.getElementById("huggingface-key-status-badge");
+  const input = document.getElementById("setting-huggingface-key");
+
+  if (input && (forceSync || !input.value)) {
+    input.value = key;
+  }
+
+  if (badge) {
+    if (key) {
+      badge.innerHTML = `<span style="background:rgba(236,72,153,0.15); color:#ec4899; border:1px solid rgba(236,72,153,0.4); padding:3px 10px; border-radius:12px; font-weight:bold; font-size:11px;">🤗 Active FLUX.1 / SD Engine</span>`;
+    } else {
+      badge.innerHTML = `<span style="color:#aaa; font-size:11px;">Optional Image Engine</span>`;
+    }
+  }
+}
+
+function toggleHuggingFaceKeyVisibility() {
+  const input = document.getElementById("setting-huggingface-key");
+  if (!input) return;
+  input.type = input.type === "password" ? "text" : "password";
+}
+
+async function testHuggingFaceApiConnection() {
+  const input = document.getElementById("setting-huggingface-key");
+  const msgArea = document.getElementById("huggingface-key-inline-msg");
+
+  if (input && input.value.trim()) {
+    localStorage.setItem("huggingface_api_token", input.value.trim());
+    updateHuggingFaceApiKeyStatusUI(true);
+  }
+
+  const token = getHuggingFaceApiKey();
+  if (!token) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444;">Please enter your Hugging Face Token (hf_...) first!</span>`;
+    alert("Please paste your Hugging Face Token first!");
+    return;
+  }
+
+  if (msgArea) msgArea.innerHTML = `<span style="color:#fbbf24;">Connecting to Hugging Face Inference API...</span>`;
+
+  try {
+    const dataUrl = await callHuggingFaceImageAPI("A high resolution scientific diagram of a plant cell");
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ec4899; font-weight:bold;">✅ Hugging Face FLUX.1 Engine Connected!</span>`;
+    alert(`🎉 Hugging Face API Connection Successful!\n\nImage generation verified.`);
+  } catch (err) {
+    if (msgArea) msgArea.innerHTML = `<span style="color:#ef4444; font-weight:bold;">❌ Connection Failed: ${escapeHTML(err.message)}</span>`;
+    alert(`❌ Hugging Face API Connection Failed: ${err.message}`);
+  }
+}
+
+// Bind immediately to window object
+window.getHuggingFaceApiKey = getHuggingFaceApiKey;
+window.saveHuggingFaceApiKey = saveHuggingFaceApiKey;
+window.removeHuggingFaceApiKey = removeHuggingFaceApiKey;
+window.updateHuggingFaceApiKeyStatusUI = updateHuggingFaceApiKeyStatusUI;
+window.toggleHuggingFaceKeyVisibility = toggleHuggingFaceKeyVisibility;
+window.testHuggingFaceApiConnection = testHuggingFaceApiConnection;
+
+async function callHuggingFaceImageAPI(prompt) {
+  const token = getHuggingFaceApiKey();
+  if (!token) throw new Error("NO_HF_TOKEN");
+
+  const modelsToTry = [
+    "black-forest-labs/FLUX.1-schnell",
+    "stabilityai/stable-diffusion-3.5-large",
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    "runwayml/stable-diffusion-v1-5"
+  ];
+
+  let lastError = null;
+
+  for (const m of modelsToTry) {
+    try {
+      const res = await fetch(`https://api-inference.huggingface.co/models/${m}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: `${prompt}, highly detailed NCERT textbook scientific illustration, 8k resolution, crisp labels`
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const msg = errJson.error || `HTTP ${res.status}`;
+        console.warn(`[HF API] Model ${m} error:`, msg);
+        lastError = new Error(`HF Model ${m} failed: ${msg}`);
+        continue;
+      }
+
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error("All Hugging Face image models failed.");
+}
+
+window.callHuggingFaceImageAPI = callHuggingFaceImageAPI;
+
 async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null, options = {}) {
   const apiKey = getOpenRouterApiKey();
   if (!apiKey) {
@@ -16330,8 +16511,8 @@ window.getRealBookDiagramImageUrl = getRealBookDiagramImageUrl;
 async function generateAiImageWithOpenRouter(prompt, containerOrEl, options = {}) {
   const statusEl = document.createElement("div");
   statusEl.className = "glass-card";
-  statusEl.style.cssText = "padding:12px; margin-top:10px; border:1px solid rgba(0,212,170,0.4); background:rgba(0,212,170,0.06); text-align:center; font-size:12px;";
-  statusEl.innerHTML = `🖼️ <strong>Loading Real NCERT Textbook Image Diagram...</strong>`;
+  statusEl.style.cssText = "padding:12px; margin-top:10px; border:1px solid rgba(236,72,153,0.4); background:rgba(236,72,153,0.06); text-align:center; font-size:12px;";
+  statusEl.innerHTML = `🖼️ <strong>Generating High-Res Image with Hugging Face FLUX.1 Engine...</strong>`;
 
   if (typeof containerOrEl === "string") {
     const parent = document.getElementById(containerOrEl);
@@ -16340,25 +16521,35 @@ async function generateAiImageWithOpenRouter(prompt, containerOrEl, options = {}
     containerOrEl.appendChild(statusEl);
   }
 
-  try {
-    const imageUrl = getRealBookDiagramImageUrl(prompt);
+  const hfToken = getHuggingFaceApiKey();
+  let imageUrl = "";
+  let engineName = "📖 Real NCERT Textbook Figure";
 
-    statusEl.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(0,212,170,0.3); padding-bottom:6px;">
-        <span style="font-size:12px; font-weight:bold; color:#00d4aa;">📖 Real NCERT Textbook Diagram — ${escapeHTML(prompt)}</span>
-        <div style="display:flex; gap:6px;">
-          <a href="${imageUrl}" target="_blank" download="NCERT_Diagram_${escapeHTML(prompt)}.png" class="btn btn-secondary" style="font-size:10px; padding:2px 8px; text-decoration:none;">📥 Download Image</a>
-          <button class="btn btn-secondary" style="font-size:10px; padding:2px 8px;" onclick="this.closest('.glass-card').remove()">✕ Close</button>
-        </div>
-      </div>
-      <div style="text-align:center; padding:10px; background:rgba(0,0,0,0.4); border-radius:8px;">
-        <img src="${imageUrl}" alt="${escapeHTML(prompt)}" style="max-width:100%; max-height:480px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); cursor:pointer; object-fit:contain; background:#fff; padding:6px;" onclick="window.open('${imageUrl}', '_blank')" title="Click to view full resolution textbook figure" />
-        <p style="font-size:11px; color:#aaa; margin-top:8px;">💡 <em>Real Textbook Figure (PNG/JPG). Click image to view in full screen.</em></p>
-      </div>
-    `;
-  } catch (err) {
-    statusEl.innerHTML = `❌ <span style="color:#ef4444;">Image Fetch Failed: ${err.message}</span>`;
+  if (hfToken) {
+    try {
+      imageUrl = await callHuggingFaceImageAPI(prompt);
+      engineName = "🤗 Hugging Face AI (FLUX.1 / SD 3.5)";
+    } catch (hfErr) {
+      console.warn("Hugging Face API error, falling back to NCERT Figure Database:", hfErr);
+      imageUrl = getRealBookDiagramImageUrl(prompt);
+    }
+  } else {
+    imageUrl = getRealBookDiagramImageUrl(prompt);
   }
+
+  statusEl.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(236,72,153,0.3); padding-bottom:6px;">
+      <span style="font-size:12px; font-weight:bold; color:#ec4899;">${engineName} — ${escapeHTML(prompt)}</span>
+      <div style="display:flex; gap:6px;">
+        <a href="${imageUrl}" target="_blank" download="NCERT_Diagram_${escapeHTML(prompt)}.png" class="btn btn-secondary" style="font-size:10px; padding:2px 8px; text-decoration:none;">📥 Download Image</a>
+        <button class="btn btn-secondary" style="font-size:10px; padding:2px 8px;" onclick="this.closest('.glass-card').remove()">✕ Close</button>
+      </div>
+    </div>
+    <div style="text-align:center; padding:10px; background:rgba(0,0,0,0.4); border-radius:8px;">
+      <img src="${imageUrl}" alt="${escapeHTML(prompt)}" style="max-width:100%; max-height:480px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); cursor:pointer; object-fit:contain; background:#fff; padding:6px;" onclick="window.open('${imageUrl}', '_blank')" title="Click to view full resolution image" />
+      <p style="font-size:11px; color:#aaa; margin-top:8px;">💡 <em>High Resolution Diagram. Click image to expand to full screen.</em></p>
+    </div>
+  `;
 }
 
 function generateAiDiagramForTutor() {
@@ -18406,6 +18597,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateApiKeyStatusUI(true);
   updateGroqApiKeyStatusUI(true);
   updateOpenRouterApiKeyStatusUI(true);
+  updateHuggingFaceApiKeyStatusUI(true);
   updateNewsDataApiKeyStatusUI(true);
   updateSerperApiKeyStatusUI(true);
   updateTavilyApiKeyStatusUI(true);
@@ -18415,6 +18607,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Attach direct event listeners for bulletproof button clicks across mobile & desktop
   const saveBtn = document.getElementById("btn-save-api-key");
   if (saveBtn) saveBtn.onclick = saveApiKey;
+
+  const saveHfBtn = document.getElementById("btn-save-huggingface-key");
+  if (saveHfBtn) saveHfBtn.onclick = saveHuggingFaceApiKey;
+
+  const testHfBtn = document.getElementById("btn-test-huggingface-key");
+  if (testHfBtn) testHfBtn.onclick = testHuggingFaceApiConnection;
+
+  const removeHfBtn = document.getElementById("btn-remove-huggingface-key");
+  if (removeHfBtn) removeHfBtn.onclick = removeHuggingFaceApiKey;
 
   const testBtn = document.getElementById("btn-test-api-key");
   if (testBtn) testBtn.onclick = testApiKeyConnection;

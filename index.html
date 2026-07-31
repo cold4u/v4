@@ -1536,6 +1536,36 @@
         </div>
       </div>
 
+      <!-- HUGGING FACE AI IMAGE SETUP CARD -->
+      <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(236,72,153,0.4);">
+        <h3>🤗 Hugging Face AI Image Setup (FLUX.1 & SD 3.5 Engine)</h3>
+        <p style="font-size:12.5px; color:#ccc; margin-top:4px;">Enter your free Hugging Face User Access Token (`hf_...`) to power AI Image & Scientific Diagram Generation with FLUX.1-schnell & Stable Diffusion 3.5 Large.</p>
+        
+        <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-weight:bold; font-size:13px;">Hugging Face Access Token</label>
+            <div id="huggingface-key-status-badge"><span style="color:#aaa; font-size:11px;">Optional Image Engine</span></div>
+          </div>
+          
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="setting-huggingface-key" class="form-control" placeholder="Paste your hf_... access token here" style="flex:1;" oninput="onHuggingFaceKeyTyped()">
+            <button type="button" class="btn btn-secondary" onclick="toggleHuggingFaceKeyVisibility()">👁️</button>
+          </div>
+          <div id="huggingface-key-inline-msg" style="font-size:12px; margin-top:2px;"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <button type="button" id="btn-save-huggingface-key" class="btn btn-primary" style="background:#ec4899; border-color:#ec4899;" onclick="saveHuggingFaceApiKey()">💾 Save Hugging Face Token</button>
+            <button type="button" id="btn-test-huggingface-key" class="btn btn-secondary" onclick="testHuggingFaceApiConnection()">🧪 Test Connection</button>
+            <a href="https://huggingface.co/settings/tokens" target="_blank" class="btn btn-secondary" style="text-decoration:none;">🌐 Get Free HF Token ↗</a>
+            <button type="button" id="btn-remove-huggingface-key" class="btn btn-secondary" onclick="removeHuggingFaceApiKey()" style="color:#ef4444; margin-left:auto;">🗑️ Remove Token</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:10px; background:rgba(236,72,153,0.06); border:1px solid rgba(236,72,153,0.2); border-radius:8px; font-size:11.5px; color:#ddd;">
+          🤗 <strong>Hugging Face Serverless Inference:</strong> Connects directly to Hugging Face Inference API (`router.huggingface.co/hf-inference/v1`) using `FLUX.1-schnell` & `Stable Diffusion 3.5 Large`.
+        </div>
+      </div>
+
       <!-- GEMINI API BYOK SETUP CARD -->
       <div class="glass-card" style="margin-bottom:20px; border:1px solid rgba(251,191,36,0.4);">
         <h3>🔑 Gemini AI API Setup (BYOK - Bring Your Own Key)</h3>
