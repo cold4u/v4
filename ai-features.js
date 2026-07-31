@@ -12,6 +12,11 @@
  * 8. NEET News & NTA Official Updates Hub + AI Summarizer
  */
 
+window.onHuggingFaceKeyTyped = window.onHuggingFaceKeyTyped || function() {
+  const msgArea = document.getElementById("huggingface-key-inline-msg");
+  if (msgArea) msgArea.innerHTML = "";
+};
+
 const GEMINI_MODELS = [
   "gemini-flash-latest",
   "gemini-2.0-flash",
@@ -3416,6 +3421,15 @@ window.updateOpenRouterApiKeyStatusUI = updateOpenRouterApiKeyStatusUI;
 window.toggleOpenRouterKeyVisibility = toggleOpenRouterKeyVisibility;
 window.testOpenRouterApiConnection = testOpenRouterApiConnection;
 window.callOpenRouterAPI = callOpenRouterAPI;
+
+window.getHuggingFaceApiKey = getHuggingFaceApiKey;
+window.saveHuggingFaceApiKey = saveHuggingFaceApiKey;
+window.removeHuggingFaceApiKey = removeHuggingFaceApiKey;
+window.updateHuggingFaceApiKeyStatusUI = updateHuggingFaceApiKeyStatusUI;
+window.toggleHuggingFaceKeyVisibility = toggleHuggingFaceKeyVisibility;
+window.testHuggingFaceApiConnection = testHuggingFaceApiConnection;
+window.onHuggingFaceKeyTyped = onHuggingFaceKeyTyped;
+window.callHuggingFaceImageAPI = callHuggingFaceImageAPI;
 
 window.getNewsDataApiKey = getNewsDataApiKey;
 window.saveNewsDataApiKey = saveNewsDataApiKey;
