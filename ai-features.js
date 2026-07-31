@@ -1178,6 +1178,127 @@ async function generateAiImageWithOpenRouter(prompt, containerOrEl, options = {}
       statusEl.innerHTML = `🎨 ${msg}`;
     }, optionsObj);
 
+function createDynamicScientificSvg(topic, rawText = "") {
+  const t = (topic || "").toLowerCase();
+
+  if (t.includes("chloroplast") || t.includes("photosynthesis") || t.includes("thylakoid") || t.includes("plant cell")) {
+    return `<svg viewBox="0 0 650 380" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:650px; background:#060d16; border-radius:12px; border:1px solid rgba(0,212,170,0.4); font-family:sans-serif;">
+      <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#051410"/>
+          <stop offset="100%" stop-color="#0a261c"/>
+        </linearGradient>
+        <linearGradient id="outerMem" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#00d4aa"/>
+          <stop offset="100%" stop-color="#10b981"/>
+        </linearGradient>
+        <linearGradient id="innerMem" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#059669"/>
+          <stop offset="100%" stop-color="#047857"/>
+        </linearGradient>
+        <linearGradient id="granumGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#34d399"/>
+          <stop offset="100%" stop-color="#059669"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Canvas BG -->
+      <rect width="650" height="380" rx="12" fill="url(#bgGrad)"/>
+      <text x="325" y="32" text-anchor="middle" fill="#00d4aa" font-size="17" font-weight="bold">🍃 DETAILED STRUCTURE OF A CHLOROPLAST</text>
+
+      <!-- Outer Membrane -->
+      <rect x="50" y="55" width="550" height="270" rx="130" ry="130" fill="none" stroke="url(#outerMem)" stroke-width="6"/>
+      <!-- Inner Membrane -->
+      <rect x="62" y="67" width="526" height="246" rx="120" ry="120" fill="none" stroke="url(#innerMem)" stroke-width="4"/>
+      <!-- Intermembrane Space -->
+      <rect x="56" y="61" width="538" height="258" rx="125" ry="125" fill="rgba(0, 212, 170, 0.05)"/>
+
+      <!-- Stroma Matrix Fluid -->
+      <path d="M 70,190 C 70,80 580,80 580,190 C 580,300 70,300 70,190 Z" fill="rgba(16, 185, 129, 0.12)"/>
+
+      <!-- Granum Stack 1 (Left) -->
+      <g transform="translate(130, 115)">
+        <rect x="0" y="0" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="22" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="44" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="66" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="88" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+      </g>
+
+      <!-- Granum Stack 2 (Middle) -->
+      <g transform="translate(285, 125)">
+        <rect x="0" y="0" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="22" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="44" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="66" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+      </g>
+
+      <!-- Granum Stack 3 (Right) -->
+      <g transform="translate(440, 115)">
+        <rect x="0" y="0" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="22" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="44" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="66" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+        <rect x="0" y="88" width="75" height="18" rx="6" fill="url(#granumGrad)" stroke="#022c22" stroke-width="1.5"/>
+      </g>
+
+      <!-- Stroma Lamellae (Intergranal Connections) -->
+      <path d="M 205,148 L 285,148" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 360,170 L 440,170" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 205,192 L 440,192" stroke="#10b981" stroke-width="4" stroke-dasharray="6,4"/>
+
+      <!-- Chloroplast DNA (Circular Strand) -->
+      <path d="M 240,255 Q 260,240 280,260 T 310,250 T 330,265" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- Ribosomes (Dots) -->
+      <circle cx="210" cy="240" r="3.5" fill="#f43f5e"/>
+      <circle cx="230" cy="270" r="3.5" fill="#f43f5e"/>
+      <circle cx="370" cy="250" r="3.5" fill="#f43f5e"/>
+      <circle cx="400" cy="230" r="3.5" fill="#f43f5e"/>
+      <circle cx="420" cy="265" r="3.5" fill="#f43f5e"/>
+
+      <!-- Labels and Pointer Lines -->
+      <line x1="120" y1="40" x2="120" y2="58" stroke="#34d399" stroke-width="1.5"/>
+      <circle cx="120" cy="58" r="3" fill="#34d399"/>
+      <rect x="50" y="16" width="140" height="22" rx="5" fill="rgba(52,211,153,0.2)" stroke="#34d399"/>
+      <text x="120" y="31" text-anchor="middle" fill="#34d399" font-size="11" font-weight="bold">Outer/Inner Membrane</text>
+
+      <line x1="167" y1="225" x2="167" y2="340" stroke="#00d4aa" stroke-width="1.5"/>
+      <circle cx="167" cy="225" r="3" fill="#00d4aa"/>
+      <rect x="100" y="340" width="135" height="24" rx="6" fill="rgba(0,212,170,0.2)" stroke="#00d4aa"/>
+      <text x="167" y="356" text-anchor="middle" fill="#00d4aa" font-size="11" font-weight="bold">Granum (Thylakoid Stack)</text>
+
+      <line x1="245" y1="148" x2="245" y2="80" stroke="#10b981" stroke-width="1.5"/>
+      <circle cx="245" cy="148" r="3" fill="#10b981"/>
+      <rect x="185" y="60" width="120" height="22" rx="5" fill="rgba(16,185,129,0.2)" stroke="#10b981"/>
+      <text x="245" y="75" text-anchor="middle" fill="#10b981" font-size="11" font-weight="bold">Stroma Lamella</text>
+
+      <line x1="322" y1="200" x2="322" y2="340" stroke="#38bdf8" stroke-width="1.5"/>
+      <circle cx="322" cy="200" r="3" fill="#38bdf8"/>
+      <rect x="255" y="340" width="135" height="24" rx="6" fill="rgba(56,189,248,0.2)" stroke="#38bdf8"/>
+      <text x="322" y="356" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold">Stroma (Fluid Matrix)</text>
+
+      <line x1="480" y1="260" x2="480" y2="340" stroke="#fbbf24" stroke-width="1.5"/>
+      <circle cx="480" cy="260" r="3" fill="#fbbf24"/>
+      <rect x="410" y="340" width="140" height="24" rx="6" fill="rgba(251,191,36,0.2)" stroke="#fbbf24"/>
+      <text x="480" y="356" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">cpDNA & Ribosomes 70S</text>
+    </svg>`;
+  }
+
+  return `<svg viewBox="0 0 650 360" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:650px; background:#060913; border-radius:12px; border:1px solid rgba(147,51,234,0.4); font-family:sans-serif;">
+    <rect width="650" height="360" rx="12" fill="#090d1a"/>
+    <text x="325" y="35" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="bold">🎨 SCIENTIFIC ILLUSTRATION: ${escapeHTML(topic.toUpperCase())}</text>
+    <rect x="40" y="55" width="570" height="280" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(147,51,234,0.3)"/>
+    <foreignObject x="50" y="65" width="550" height="260">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="color:#ddd; font-size:12px; line-height:1.6; height:100%; overflow-y:auto; font-family:sans-serif;">
+        ${parseMarkdownAndKaTeX(rawText)}
+      </div>
+    </foreignObject>
+  </svg>`;
+}
+
+window.createDynamicScientificSvg = createDynamicScientificSvg;
+
     let cleanSvg = rawSvgResult.trim();
     if (cleanSvg.includes("<svg")) {
       const startIdx = cleanSvg.indexOf("<svg");
@@ -1186,7 +1307,7 @@ async function generateAiImageWithOpenRouter(prompt, containerOrEl, options = {}
         cleanSvg = cleanSvg.substring(startIdx, endIdx + 6);
       }
     } else {
-      cleanSvg = `<div style="padding:15px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px solid var(--glass-border); text-align:left;">🖼️ <strong>Visual Diagram Summary:</strong><br>${parseMarkdownAndKaTeX(rawSvgResult)}</div>`;
+      cleanSvg = createDynamicScientificSvg(prompt, rawSvgResult);
     }
 
     statusEl.innerHTML = `
