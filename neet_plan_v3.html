@@ -15530,10 +15530,11 @@ function quickSaveApiKey(btn) {
    ========================================================================== */
 
 const OPENROUTER_MODELS = [
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "openai/gpt-oss-20b:free",
-  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "google/gemma-2-9b-it:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
   "openrouter/free"
 ];
 
@@ -15667,15 +15668,14 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
   }
 
   const visionModels = [
-    "google/gemma-4-31b-it:free",
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-2-9b-it:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
     "openrouter/free"
   ];
 
   const selectedModel = options.imageDataUrl
-    ? (options.model || "google/gemma-4-31b-it:free")
-    : (options.model || "google/gemma-4-31b-it:free");
+    ? (options.model || "google/gemma-2-9b-it:free")
+    : (options.model || "google/gemma-2-9b-it:free");
 
   const fallbackList = options.imageDataUrl ? visionModels : OPENROUTER_MODELS;
   const modelsToTry = [selectedModel, ...fallbackList.filter(m => m !== selectedModel)];
@@ -15712,7 +15712,7 @@ async function callOpenRouterAPI(prompt, systemInstruction = "", onStatus = null
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         const msg = errData.error?.message || `HTTP ${res.status}`;
-        console.warn(`OpenRouter model ${m} error:`, msg);
+        console.log(`[OpenRouter Failover] Model ${m} unavailable (${msg}). Trying next fallback model...`);
         modelErrors.push(`[${m}]: ${msg}`);
         if (res.status === 401 || msg.includes("Invalid API key")) {
           throw new Error("INVALID_OPENROUTER_KEY");
